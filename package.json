@@ -15,7 +15,7 @@
     "@tailwindcss/vite": "^4.1.14",
     "@types/leaflet": "^1.9.4",
     "@vitejs/plugin-react": "^5.0.4",
-    "better-sqlite3": "^32.4.1",
+    "better-sqlite3": "^9.4.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.5",
