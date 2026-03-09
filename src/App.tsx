@@ -101,6 +101,13 @@ export default function App() {
   const [mapZoom, setMapZoom] = useState(13);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [watchedCities, setWatchedCities] = useState<string[]>(() => {
+  const stored = localStorage.getItem('allgood_watched_cities');
+  return stored ? JSON.parse(stored) : [];
+});
+const [myCity, setMyCity] = useState<string>('');
+const [showLocationSettings, setShowLocationSettings] = useState(false);
+const [manualCityInput, setManualCityInput] = useState('');
 
   const t = translations[lang];
   const isRTL = lang === 'he' || lang === 'ar';
@@ -173,6 +180,30 @@ export default function App() {
         })
         .catch(err => console.error('Alert check error:', err));
     });
+    useEffect(() => {
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const { latitude, longitude } = pos.coords;
+    setMapCenter([latitude, longitude]);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+      const data = await res.json();
+      const city = data.address?.city || data.address?.town || data.address?.village || '';
+      if (city) {
+        setMyCity(city);
+        setWatchedCities(prev => {
+          if (prev.includes(city)) return prev;
+          const updated = [city, ...prev].slice(0, 3);
+          localStorage.setItem('allgood_watched_cities', JSON.stringify(updated));
+          return updated;
+        });
+      }
+    } catch {}
+  });
+}, []);
+
+useEffect(() => {
+  localStorage.setItem('allgood_watched_cities', JSON.stringify(watchedCities));
+}, [watchedCities]);
 
     newSocket.on('group-update', ({ groupId, name, type, members }: { groupId: string, name: string, type: string, members: User[] }) => {
       setGroups(prev => ({ 
@@ -188,6 +219,13 @@ export default function App() {
     });
 
     newSocket.on('new-alert', async (alert: Alert) => {
+      // Filter: only show if alert is in watched cities
+      if (watchedCities.length > 0 && alert.cities) {
+        const isRelevant = alert.cities.some(city => 
+          watchedCities.some(w => city.includes(w) || w.includes(city))
+        );
+        if (!isRelevant) return;
+      }
       setCurrentAlert(alert);
       setMyStatus('pending');
       newSocket.emit('update-status', { status: 'pending' });
@@ -511,6 +549,44 @@ export default function App() {
                   Save
                 </button>
               </form>
+              <div>
+  <h3 className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-2">Alert Zones</h3>
+  <div className="flex flex-wrap gap-2 mb-2">
+    {watchedCities.map(city => (
+      <span key={city} className="flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full">
+        <MapPin className="w-3 h-3" />
+        {city}
+        <button onClick={() => setWatchedCities(prev => prev.filter(c => c !== city))}>
+          <X className="w-3 h-3 opacity-60 hover:opacity-100" />
+        </button>
+      </span>
+    ))}
+    {watchedCities.length === 0 && (
+      <p className="text-xs opacity-40">No zones set — receiving all alerts</p>
+    )}
+  </div>
+  {watchedCities.length < 3 && (
+    <div className="flex gap-2">
+      <input
+        value={manualCityInput}
+        onChange={e => setManualCityInput(e.target.value)}
+        placeholder="Add city..."
+        className="flex-1 bg-stone-50 border border-black/5 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500"
+      />
+      <button
+        onClick={() => {
+          if (manualCityInput.trim()) {
+            setWatchedCities(prev => [...prev, manualCityInput.trim()].slice(0, 3));
+            setManualCityInput('');
+          }
+        }}
+        className="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-xl"
+      >
+        Add
+      </button>
+    </div>
+  )}
+</div>
             </div>
           </motion.div>
         )}
