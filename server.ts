@@ -4,12 +4,37 @@ import { Server } from 'socket.io';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import Database from 'better-sqlite3';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ─── Tzeva Adom API (works from Cloud Run, CORS-friendly) ────────────────────
-// Returns: [{ notificationId, time, threat, isDrill, cities[] }]
+// ─── SQLite Setup ─────────────────────────────────────────────────────────────
+const db = new Database('allgood.db');
+db.exec(`
+  CREATE TABLE IF NOT EXISTS groups (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    created_at INTEGER DEFAULT (strftime('%s','now'))
+  );
+`);
+
+function saveGroup(id: string, name: string, type: string) {
+  db.prepare('INSERT OR IGNORE INTO groups (id, name, type) VALUES (?, ?, ?)').run(id, name, type);
+}
+
+function loadGroups(): Map<string, any> {
+  const rows = db.prepare('SELECT * FROM groups').all() as any[];
+  const map = new Map();
+  rows.forEach(row => {
+    map.set(row.id, { id: row.id, name: row.name, type: row.type, members: [] });
+  });
+  return map;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─── Tzeva Adom API ──────────────────────────────────────────────────────────
 const THREAT_LABELS: Record<number, string> = {
   0: 'ירי רקטות וטילים',
   1: 'חדירת כלי טיס עוין',
@@ -49,11 +74,18 @@ async function startServer() {
   const PORT = 3000;
 
   const users = new Map();
-  const groups = new Map();
+  const groups = loadGroups(); // Load from SQLite on startup
   const alerts: any[] = [];
 
-  // Track which notificationIds we already handled
+  console.log(`📦 Loaded ${groups.size} groups from database`);
+
   const seenNotificationIds = new Set<string>();
+
+  // ─── Keep-alive ping ──────────────────────────────────────────────────────
+  setInterval(() => {
+    fetch(`http://localhost:${PORT}/api/health`).catch(() => {});
+  }, 10 * 60 * 1000);
+  // ─────────────────────────────────────────────────────────────────────────
 
   // ─── Poll Tzeva Adom every 5 seconds ──────────────────────────────────────
   setInterval(async () => {
@@ -63,8 +95,6 @@ async function startServer() {
     for (const notif of notifications) {
       if (!notif.notificationId || seenNotificationIds.has(notif.notificationId)) continue;
       seenNotificationIds.add(notif.notificationId);
-
-      // Skip drills
       if (notif.isDrill) continue;
 
       const cities: string[] = notif.cities || [];
@@ -74,9 +104,7 @@ async function startServer() {
       const newAlert = {
         id: notif.notificationId,
         timestamp: (notif.time || Date.now() / 1000) * 1000,
-        area,
-        cities,
-        title,
+        area, cities, title,
         threat: notif.threat,
         source: 'tzevaadom',
         lat: 31.5 + Math.random() * 2,
@@ -84,10 +112,8 @@ async function startServer() {
       };
 
       alerts.push(newAlert);
-      // Keep last 100 alerts only
       if (alerts.length > 100) alerts.shift();
 
-      // Set all users to pending
       users.forEach((user) => {
         user.status = 'pending';
         user.alertStartTime = Date.now();
@@ -163,37 +189,39 @@ async function startServer() {
     socket.on('create-group', ({ name, type }) => {
       const groupId = `${type}-${Math.random().toString(36).substr(2, 4)}`;
       groups.set(groupId, { id: groupId, name, type, members: [] });
+      saveGroup(groupId, name, type); // Save to SQLite
       socket.emit('group-created', { id: groupId, name, type });
+      console.log(`✅ Group created and saved: ${groupId} (${name})`);
     });
 
     socket.on('join-group', ({ userId, userName, userPhone, userEmail, groupIds, groupRoles }) => {
       const user = {
-        id: userId, 
-        name: userName, 
-        phone: userPhone,
-        email: userEmail,
-        groupIds,
-        groupRoles: groupRoles || {},
-        status: 'safe', 
-        socketId: socket.id, 
-        lastUpdate: Date.now()
+        id: userId, name: userName, phone: userPhone, email: userEmail,
+        groupIds, groupRoles: groupRoles || {},
+        status: 'safe', socketId: socket.id, lastUpdate: Date.now()
       };
       users.set(socket.id, user);
 
       groupIds.forEach((groupId: string) => {
         socket.join(groupId);
+
+        // If group not in memory (server restarted), restore from DB
+        if (!groups.has(groupId)) {
+          const row = db.prepare('SELECT * FROM groups WHERE id = ?').get(groupId) as any;
+          if (row) {
+            groups.set(groupId, { id: row.id, name: row.name, type: row.type, members: [] });
+            console.log(`♻️ Restored group from DB: ${groupId}`);
+          }
+        }
+
         const group = groups.get(groupId);
         if (group) {
           const idx = group.members.findIndex((m: any) => m.id === userId);
           if (idx === -1) group.members.push(user);
           else group.members[idx] = user;
-          
-          // Send to everyone in the group including the new member
-          io.to(groupId).emit('group-update', { 
-            groupId, 
-            name: group.name, 
-            type: group.type, 
-            members: group.members 
+
+          io.to(groupId).emit('group-update', {
+            groupId, name: group.name, type: group.type, members: group.members
           });
         }
       });
@@ -208,11 +236,8 @@ async function startServer() {
         if (group) {
           const idx = group.members.findIndex((m: any) => m.id === user.id);
           if (idx !== -1) group.members[idx] = user;
-          io.to(groupId).emit('group-update', { 
-            groupId, 
-            name: group.name, 
-            type: group.type, 
-            members: group.members 
+          io.to(groupId).emit('group-update', {
+            groupId, name: group.name, type: group.type, members: group.members
           });
         }
       }
@@ -231,18 +256,14 @@ async function startServer() {
           if (group) {
             const idx = group.members.findIndex((m: any) => m.id === user.id);
             if (idx !== -1) group.members[idx] = user;
-            io.to(groupId).emit('group-update', { 
-              groupId, 
-              name: group.name, 
-              type: group.type, 
-              members: group.members 
+            io.to(groupId).emit('group-update', {
+              groupId, name: group.name, type: group.type, members: group.members
             });
           }
         });
       }
     });
 
-    // Demo trigger (for testing)
     socket.on('trigger-alert', (alert) => {
       const newAlert = {
         ...alert,
@@ -270,24 +291,26 @@ async function startServer() {
 
   // ─── API Routes ───────────────────────────────────────────────────────────
   app.get('/api/health', (_, res) => {
-    res.json({ status: 'ok', alertsCount: alerts.length });
+    res.json({ status: 'ok', alertsCount: alerts.length, groupsCount: groups.size });
   });
 
-  // Proxy to tzevaadom (for history in frontend)
   app.get('/api/alerts/live', async (_, res) => {
     const data = await fetchTzevaAdomAlerts();
     res.json(data);
   });
 
-  // In-app alert history
   app.get('/api/alerts', (_, res) => {
     res.json(alerts.slice(-50).reverse());
   });
 
-  // Get current active alert (most recent one)
   app.get('/api/alerts/active', (_, res) => {
     const latest = alerts[alerts.length - 1];
     res.json(latest || {});
+  });
+
+  app.get('/api/groups', (_, res) => {
+    const allGroups = db.prepare('SELECT * FROM groups').all();
+    res.json(allGroups);
   });
   // ─────────────────────────────────────────────────────────────────────────
 
