@@ -1383,7 +1383,6 @@ useEffect(() => {
                 >
                   📍 Not in Area
                 </button>
-              </div>
             </div>
           </motion.div>
         )}
