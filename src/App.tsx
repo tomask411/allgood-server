@@ -140,7 +140,8 @@ export default function App() {
         userId: MY_USER_ID,
         userName: userName || 'User',
         groupIds: Object.keys(groupRoles),
-        groupRoles: groupRoles
+        groupRoles: groupRoles,
+        watchedCities: watchedCities
       });
     }
   }, [socket, groupRoles, userName]);
@@ -193,12 +194,14 @@ export default function App() {
       // Re-join all groups on connect/reconnect — fixes groups disappearing after refresh
       const storedRoles = JSON.parse(localStorage.getItem('allgood_group_roles') || '{}');
       const storedName = localStorage.getItem('allgood_name') || 'User';
+      const storedCities = JSON.parse(localStorage.getItem('allgood_watched_cities') || '[]');
       if (Object.keys(storedRoles).length > 0) {
         newSocket.emit('join-group', {
           userId: MY_USER_ID,
           userName: storedName,
           groupIds: Object.keys(storedRoles),
-          groupRoles: storedRoles
+          groupRoles: storedRoles,
+          watchedCities: storedCities
         });
       }
       newSocket.emit('get-alerts');
@@ -312,7 +315,8 @@ export default function App() {
       userId: MY_USER_ID,
       userName: newName,
       groupIds: Object.keys(groupRoles),
-      groupRoles
+      groupRoles,
+      watchedCities: watchedCities
     });
   };
 
