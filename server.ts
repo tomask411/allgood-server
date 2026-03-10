@@ -74,7 +74,7 @@ async function startServer() {
   const PORT = 3000;
 
   const users = new Map();
-  const groups = loadGroups(); // Load from SQLite on startup
+  const groups = loadGroups();
   const alerts: any[] = [];
 
   console.log(`📦 Loaded ${groups.size} groups from database`);
@@ -189,7 +189,7 @@ async function startServer() {
     socket.on('create-group', ({ name, type }) => {
       const groupId = `${type}-${Math.random().toString(36).substr(2, 4)}`;
       groups.set(groupId, { id: groupId, name, type, members: [] });
-      saveGroup(groupId, name, type); // Save to SQLite
+      saveGroup(groupId, name, type);
       socket.emit('group-created', { id: groupId, name, type });
       console.log(`✅ Group created and saved: ${groupId} (${name})`);
     });
@@ -205,7 +205,6 @@ async function startServer() {
       groupIds.forEach((groupId: string) => {
         socket.join(groupId);
 
-        // If group not in memory (server restarted), restore from DB
         if (!groups.has(groupId)) {
           const row = db.prepare('SELECT * FROM groups WHERE id = ?').get(groupId) as any;
           if (row) {
@@ -225,7 +224,29 @@ async function startServer() {
           });
         }
       });
+    }); // ← סוגר join-group
+
+    // ─── Leave Group ──────────────────────────────────────────────────────
+    socket.on('leave-group', ({ groupId, userId }: { groupId: string, userId: string }) => {
+      const group = groups.get(groupId);
+      if (group) {
+        group.members = group.members.filter((m: any) => m.id !== userId);
+        io.to(groupId).emit('group-update', {
+          groupId,
+          name: group.name,
+          type: group.type,
+          members: group.members
+        });
+        console.log(`👋 User ${userId} left group ${groupId}`);
+      }
+      socket.leave(groupId);
+      const user = users.get(socket.id);
+      if (user) {
+        user.groupIds = user.groupIds.filter((id: string) => id !== groupId);
+        if (user.groupRoles) delete user.groupRoles[groupId];
+      }
     });
+    // ─────────────────────────────────────────────────────────────────────
 
     socket.on('update-role', ({ groupId, role }) => {
       const user = users.get(socket.id);
@@ -283,16 +304,26 @@ async function startServer() {
       socket.emit('all-alerts', alerts);
     });
 
+    // ─── Disconnect ───────────────────────────────────────────────────────
     socket.on('disconnect', () => {
-  const user = users.get(socket.id);
-  if (user) {
-    user.groupIds?.forEach((groupId) => {
-      group.members = group.members.filter(m => m.id !== user.id);
-      io.to(groupId).emit('group-update', ...);
+      console.log('User disconnected:', socket.id);
+      const user = users.get(socket.id);
+      if (user) {
+        user.groupIds?.forEach((groupId: string) => {
+          const group = groups.get(groupId);
+          if (group) {
+            group.members = group.members.filter((m: any) => m.id !== user.id);
+            io.to(groupId).emit('group-update', {
+              groupId, name: group.name, type: group.type, members: group.members
+            });
+          }
+        });
+        users.delete(socket.id);
+      }
     });
-    users.delete(socket.id);
-  }
-});
+    // ─────────────────────────────────────────────────────────────────────
+
+  }); // ← סוגר io.on('connection')
   // ─────────────────────────────────────────────────────────────────────────
 
   // ─── API Routes ───────────────────────────────────────────────────────────
