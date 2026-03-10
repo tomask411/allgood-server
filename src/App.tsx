@@ -190,6 +190,17 @@ export default function App() {
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
+      // Re-join all groups on connect/reconnect — fixes groups disappearing after refresh
+      const storedRoles = JSON.parse(localStorage.getItem('allgood_group_roles') || '{}');
+      const storedName = localStorage.getItem('allgood_name') || 'User';
+      if (Object.keys(storedRoles).length > 0) {
+        newSocket.emit('join-group', {
+          userId: MY_USER_ID,
+          userName: storedName,
+          groupIds: Object.keys(storedRoles),
+          groupRoles: storedRoles
+        });
+      }
       newSocket.emit('get-alerts');
       fetch('/api/alerts/active')
         .then(res => res.json())
@@ -829,6 +840,27 @@ export default function App() {
                               className="text-xs font-bold text-emerald-600 hover:underline"
                             >
                               {t.invite}
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`Leave "${groupName}"? You can rejoin with the code.`)) {
+                                  socket?.emit('leave-group', { groupId, userId: MY_USER_ID });
+                                  setGroupRoles(prev => {
+                                    const updated = { ...prev };
+                                    delete updated[groupId];
+                                    return updated;
+                                  });
+                                  setGroups(prev => {
+                                    const updated = { ...prev };
+                                    delete updated[groupId];
+                                    return updated;
+                                  });
+                                  setSelectedGroupId(null);
+                                }
+                              }}
+                              className="text-xs font-bold text-red-400 hover:text-red-600 hover:underline"
+                            >
+                              Leave
                             </button>
                           </div>
                         </div>
