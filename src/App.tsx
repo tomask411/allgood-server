@@ -688,18 +688,7 @@ export default function App() {
               </motion.div>
             </section>
 
-            <section className="mt-12 p-6 bg-stone-200/50 rounded-3xl border border-black/5">
-              <div className="flex items-center gap-2 mb-4">
-                <Info className="w-4 h-4 opacity-40" />
-                <h3 className="text-xs font-bold uppercase tracking-wider opacity-40">Developer Preview</h3>
-              </div>
-              <button 
-                onClick={triggerDemoAlert}
-                className="w-full bg-black text-white font-bold py-3 rounded-xl hover:bg-stone-800 transition-colors"
-              >
-                {t.demoAlert}
-              </button>
-            </section>
+            
           </>
         )}
 
