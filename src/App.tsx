@@ -102,12 +102,12 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [watchedCities, setWatchedCities] = useState<string[]>(() => {
-  const stored = localStorage.getItem('allgood_watched_cities');
-  return stored ? JSON.parse(stored) : [];
-});
-const [myCity, setMyCity] = useState<string>('');
-const [showLocationSettings, setShowLocationSettings] = useState(false);
-const [manualCityInput, setManualCityInput] = useState('');
+    const stored = localStorage.getItem('allgood_watched_cities');
+    return stored ? JSON.parse(stored) : [];
+  });
+  const [myCity, setMyCity] = useState<string>('');
+  const [showLocationSettings, setShowLocationSettings] = useState(false);
+  const [manualCityInput, setManualCityInput] = useState('');
 
   const t = translations[lang];
   const isRTL = lang === 'he' || lang === 'ar';
@@ -159,18 +159,42 @@ const [manualCityInput, setManualCityInput] = useState('');
     }
   }, []);
 
+  // FIX 1: GPS useEffect is now its own separate block, outside the socket useEffect
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const { latitude, longitude } = pos.coords;
+      setMapCenter([latitude, longitude]);
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+        const data = await res.json();
+        const city = data.address?.city || data.address?.town || data.address?.village || '';
+        if (city) {
+          setMyCity(city);
+          setWatchedCities(prev => {
+            if (prev.includes(city)) return prev;
+            const updated = [city, ...prev].slice(0, 3);
+            localStorage.setItem('allgood_watched_cities', JSON.stringify(updated));
+            return updated;
+          });
+        }
+      } catch {}
+    });
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('allgood_watched_cities', JSON.stringify(watchedCities));
+  }, [watchedCities]);
+
   useEffect(() => {
     const newSocket = io();
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
       newSocket.emit('get-alerts');
-      // Request current active alert if any
       fetch('/api/alerts/active')
         .then(res => res.json())
         .then(data => {
           if (data && data.id) {
-            // Only trigger if alert is recent (last 10 mins)
             const isRecent = (Date.now() - data.timestamp) < 600000;
             if (isRecent) {
               setCurrentAlert(data);
@@ -180,30 +204,6 @@ const [manualCityInput, setManualCityInput] = useState('');
         })
         .catch(err => console.error('Alert check error:', err));
     });
-    useEffect(() => {
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    const { latitude, longitude } = pos.coords;
-    setMapCenter([latitude, longitude]);
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-      const data = await res.json();
-      const city = data.address?.city || data.address?.town || data.address?.village || '';
-      if (city) {
-        setMyCity(city);
-        setWatchedCities(prev => {
-          if (prev.includes(city)) return prev;
-          const updated = [city, ...prev].slice(0, 3);
-          localStorage.setItem('allgood_watched_cities', JSON.stringify(updated));
-          return updated;
-        });
-      }
-    } catch {}
-  });
-}, []);
-
-useEffect(() => {
-  localStorage.setItem('allgood_watched_cities', JSON.stringify(watchedCities));
-}, [watchedCities]);
 
     newSocket.on('group-update', ({ groupId, name, type, members }: { groupId: string, name: string, type: string, members: User[] }) => {
       setGroups(prev => ({ 
@@ -219,7 +219,6 @@ useEffect(() => {
     });
 
     newSocket.on('new-alert', async (alert: Alert) => {
-      // Filter: only show if alert is in watched cities
       if (watchedCities.length > 0 && alert.cities) {
         const isRelevant = alert.cities.some(city => 
           watchedCities.some(w => city.includes(w) || w.includes(city))
@@ -230,7 +229,6 @@ useEffect(() => {
       setMyStatus('pending');
       newSocket.emit('update-status', { status: 'pending' });
       
-      // Get context for Claude message
       const firstGroupId = Object.keys(groupRoles)[0];
       const groupType = (firstGroupId?.split('-')[0] as 'family' | 'work' | 'friends') || 'family';
       const groupName = firstGroupId ? (firstGroupId.split('-').slice(1).join('-') || firstGroupId) : 'General';
@@ -246,7 +244,6 @@ useEffect(() => {
       });
       setSafetyTips(message);
       
-      // Center map on alert
       if (alert.lat && alert.lng) {
         setMapCenter([alert.lat, alert.lng]);
         setMapZoom(14);
@@ -283,7 +280,6 @@ useEffect(() => {
     setCurrentAlert(null);
     setSafetyTips(null);
     socket?.emit('update-status', { status: 'danger' });
-    // Open dialer for emergency services (100 is Police in Israel)
     window.location.href = 'tel:100';
   };
 
@@ -349,7 +345,6 @@ useEffect(() => {
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-
     setIsSearching(true);
     try {
       const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery + ', Israel')}&limit=1`);
@@ -372,11 +367,7 @@ useEffect(() => {
   };
 
   const triggerDemoAlert = () => {
-    socket?.emit('trigger-alert', {
-      area: 'Tel Aviv',
-      lat: 32.0853,
-      lng: 34.7818
-    });
+    socket?.emit('trigger-alert', { area: 'Tel Aviv', lat: 32.0853, lng: 34.7818 });
   };
 
   const getStatusColor = (status: UserStatus) => {
@@ -550,43 +541,43 @@ useEffect(() => {
                 </button>
               </form>
               <div>
-  <h3 className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-2">Alert Zones</h3>
-  <div className="flex flex-wrap gap-2 mb-2">
-    {watchedCities.map(city => (
-      <span key={city} className="flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full">
-        <MapPin className="w-3 h-3" />
-        {city}
-        <button onClick={() => setWatchedCities(prev => prev.filter(c => c !== city))}>
-          <X className="w-3 h-3 opacity-60 hover:opacity-100" />
-        </button>
-      </span>
-    ))}
-    {watchedCities.length === 0 && (
-      <p className="text-xs opacity-40">No zones set — receiving all alerts</p>
-    )}
-  </div>
-  {watchedCities.length < 3 && (
-    <div className="flex gap-2">
-      <input
-        value={manualCityInput}
-        onChange={e => setManualCityInput(e.target.value)}
-        placeholder="Add city..."
-        className="flex-1 bg-stone-50 border border-black/5 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500"
-      />
-      <button
-        onClick={() => {
-          if (manualCityInput.trim()) {
-            setWatchedCities(prev => [...prev, manualCityInput.trim()].slice(0, 3));
-            setManualCityInput('');
-          }
-        }}
-        className="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-xl"
-      >
-        Add
-      </button>
-    </div>
-  )}
-</div>
+                <h3 className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-2">Alert Zones</h3>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {watchedCities.map(city => (
+                    <span key={city} className="flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full">
+                      <MapPin className="w-3 h-3" />
+                      {city}
+                      <button onClick={() => setWatchedCities(prev => prev.filter(c => c !== city))}>
+                        <X className="w-3 h-3 opacity-60 hover:opacity-100" />
+                      </button>
+                    </span>
+                  ))}
+                  {watchedCities.length === 0 && (
+                    <p className="text-xs opacity-40">No zones set — receiving all alerts</p>
+                  )}
+                </div>
+                {watchedCities.length < 3 && (
+                  <div className="flex gap-2">
+                    <input
+                      value={manualCityInput}
+                      onChange={e => setManualCityInput(e.target.value)}
+                      placeholder="Add city..."
+                      className="flex-1 bg-stone-50 border border-black/5 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                    />
+                    <button
+                      onClick={() => {
+                        if (manualCityInput.trim()) {
+                          setWatchedCities(prev => [...prev, manualCityInput.trim()].slice(0, 3));
+                          setManualCityInput('');
+                        }
+                      }}
+                      className="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-xl"
+                    >
+                      Add
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </motion.div>
         )}
@@ -623,7 +614,6 @@ useEffect(() => {
 
         {activeTab === 'status' && (
           <>
-            {/* Status Card */}
             <section className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold uppercase tracking-wider opacity-50">{t.yourStatus}</h2>
@@ -698,7 +688,6 @@ useEffect(() => {
               </motion.div>
             </section>
 
-            {/* Demo Controls */}
             <section className="mt-12 p-6 bg-stone-200/50 rounded-3xl border border-black/5">
               <div className="flex items-center gap-2 mb-4">
                 <Info className="w-4 h-4 opacity-40" />
@@ -1016,7 +1005,6 @@ useEffect(() => {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 
-                {/* User Marker */}
                 <Marker position={mapCenter}>
                   <Popup>
                     <div className="text-center">
@@ -1026,7 +1014,6 @@ useEffect(() => {
                   </Popup>
                 </Marker>
 
-                {/* Circle Member Markers */}
                 {selectedGroupId && groups[selectedGroupId]?.members?.map(member => (
                   member.location && member.id !== MY_USER_ID && (
                     <Marker 
@@ -1056,7 +1043,6 @@ useEffect(() => {
                   )
                 ))}
 
-                {/* Alert Markers */}
                 {allAlerts.map((alert) => (
                   alert.lat && alert.lng && (
                     <Marker 
@@ -1137,7 +1123,6 @@ useEffect(() => {
               >
                 <X className="w-5 h-5 opacity-40" />
               </button>
-
               <div className="text-center mb-8">
                 <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Users className="w-8 h-8 text-emerald-600" />
@@ -1145,7 +1130,6 @@ useEffect(() => {
                 <h3 className="text-xl font-bold tracking-tight">{t.createCircle}</h3>
                 <p className="text-sm opacity-60 mt-1">Build your safety network</p>
               </div>
-
               <div className="space-y-4 mb-8">
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-1.5 block">Circle Name</label>
@@ -1177,7 +1161,6 @@ useEffect(() => {
                   </div>
                 </div>
               </div>
-
               <button 
                 onClick={handleCreateCircle}
                 disabled={!newCircleName.trim()}
@@ -1211,7 +1194,6 @@ useEffect(() => {
               >
                 <X className="w-5 h-5 opacity-40" />
               </button>
-
               <div className="text-center mb-8">
                 <div className="w-16 h-16 bg-stone-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <QrCode className="w-8 h-8 text-stone-600" />
@@ -1219,7 +1201,6 @@ useEffect(() => {
                 <h3 className="text-xl font-bold tracking-tight">{t.joinCircle}</h3>
                 <p className="text-sm opacity-60 mt-1">Enter a circle code or paste a link</p>
               </div>
-
               <div className="space-y-4 mb-8">
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-1.5 block">{t.enterCode}</label>
@@ -1239,7 +1220,6 @@ useEffect(() => {
                   />
                 </div>
               </div>
-
               <button 
                 onClick={() => handleJoinCircle()}
                 disabled={!joinCircleCode.trim()}
@@ -1273,7 +1253,6 @@ useEffect(() => {
               >
                 <X className="w-5 h-5 opacity-40" />
               </button>
-
               <div className="text-center mb-8">
                 <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <QrCode className="w-8 h-8 text-emerald-600" />
@@ -1281,7 +1260,6 @@ useEffect(() => {
                 <h3 className="text-xl font-bold tracking-tight">Invite to {inviteGroup.name}</h3>
                 <p className="text-sm opacity-60 mt-1">Scan this code or use the code below</p>
               </div>
-
               <div className="bg-stone-50 p-6 rounded-3xl flex flex-col items-center justify-center mb-4 border border-black/5">
                 <QRCodeSVG 
                   value={`${window.location.origin}/join/${inviteGroup.id}`}
@@ -1294,7 +1272,6 @@ useEffect(() => {
                   <p className="font-mono font-bold text-emerald-600 select-all">{inviteGroup.id}</p>
                 </div>
               </div>
-
               <button
                 onClick={() => {
                   const link = `${window.location.origin}/join/${inviteGroup.id}`;
@@ -1309,7 +1286,6 @@ useEffect(() => {
                 <ChevronRight className="w-4 h-4" />
                 Copy / Share Link
               </button>
-
               <button 
                 onClick={() => setInviteGroup(null)}
                 className="w-full bg-black text-white font-bold py-4 rounded-2xl hover:bg-stone-800 transition-colors"
@@ -1383,6 +1359,7 @@ useEffect(() => {
                 >
                   📍 Not in Area
                 </button>
+              </div>
             </div>
           </motion.div>
         )}
