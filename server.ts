@@ -121,7 +121,19 @@ async function startServer() {
         user.escalationFired = false;
       });
 
-      io.emit('new-alert', newAlert);
+      // Send alert only to users whose watchedCities match, or those with no filter
+      users.forEach((user, socketId) => {
+        if (!user.watchedCities?.length) {
+          io.to(socketId).emit('new-alert', newAlert);
+        } else {
+          const isRelevant = newAlert.cities.some((city: string) =>
+            user.watchedCities.some((w: string) =>
+              city.includes(w) || w.includes(city)
+            )
+          );
+          if (isRelevant) io.to(socketId).emit('new-alert', newAlert);
+        }
+      });
       io.emit('all-alerts', alerts);
       console.log(`🚨 Real Alert [${notif.notificationId}]: ${title} — ${area}`);
     }
@@ -194,10 +206,11 @@ async function startServer() {
       console.log(`✅ Group created and saved: ${groupId} (${name})`);
     });
 
-    socket.on('join-group', ({ userId, userName, userPhone, userEmail, groupIds, groupRoles }) => {
+    socket.on('join-group', ({ userId, userName, userPhone, userEmail, groupIds, groupRoles, watchedCities }) => {
       const user = {
         id: userId, name: userName, phone: userPhone, email: userEmail,
         groupIds, groupRoles: groupRoles || {},
+        watchedCities: watchedCities || [],
         status: 'safe', socketId: socket.id, lastUpdate: Date.now()
       };
       users.set(socket.id, user);
@@ -296,7 +309,19 @@ async function startServer() {
       };
       alerts.push(newAlert);
       users.forEach((user) => { user.status = 'pending'; user.alertStartTime = Date.now(); });
-      io.emit('new-alert', newAlert);
+      // Send alert only to users whose watchedCities match, or those with no filter
+      users.forEach((user, socketId) => {
+        if (!user.watchedCities?.length) {
+          io.to(socketId).emit('new-alert', newAlert);
+        } else {
+          const isRelevant = newAlert.cities.some((city: string) =>
+            user.watchedCities.some((w: string) =>
+              city.includes(w) || w.includes(city)
+            )
+          );
+          if (isRelevant) io.to(socketId).emit('new-alert', newAlert);
+        }
+      });
       io.emit('all-alerts', alerts);
     });
 
