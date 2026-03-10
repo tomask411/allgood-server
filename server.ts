@@ -284,9 +284,15 @@ async function startServer() {
     });
 
     socket.on('disconnect', () => {
-      console.log('User disconnected:', socket.id);
+  const user = users.get(socket.id);
+  if (user) {
+    user.groupIds?.forEach((groupId) => {
+      group.members = group.members.filter(m => m.id !== user.id);
+      io.to(groupId).emit('group-update', ...);
     });
-  });
+    users.delete(socket.id);
+  }
+});
   // ─────────────────────────────────────────────────────────────────────────
 
   // ─── API Routes ───────────────────────────────────────────────────────────
