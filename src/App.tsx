@@ -72,7 +72,10 @@ export default function App() {
   const [phoneInput, setPhoneInput] = useState('');
   const [emailInput, setEmailInput] = useState('');
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [groups, setGroups] = useState<Record<string, { name: string, type: string, members: User[] }>>({});
+  const [groups, setGroups] = useState<Record<string, { name: string, type: string, members: User[] }>>(() => {
+    const stored = localStorage.getItem('allgood_groups');
+    return stored ? JSON.parse(stored) : {};
+  });
   const [allAlerts, setAllAlerts] = useState<Alert[]>([]);
   const [currentAlert, setCurrentAlert] = useState<Alert | null>(null);
   const [myStatus, setMyStatus] = useState<UserStatus>('safe');
@@ -135,16 +138,26 @@ export default function App() {
   }, [groupRoles]);
 
   useEffect(() => {
+    // Save group names/types to localStorage (members are live from server)
+    const toSave: Record<string, { name: string, type: string, members: User[] }> = {};
+    Object.entries(groups).forEach(([id, g]) => {
+      toSave[id] = { name: g.name, type: g.type, members: [] };
+    });
+    if (Object.keys(toSave).length > 0) {
+      localStorage.setItem('allgood_groups', JSON.stringify(toSave));
+    }
+  }, [groups]);
+
+  useEffect(() => {
     if (socket && socket.connected) {
       socket.emit('join-group', {
         userId: MY_USER_ID,
         userName: userName || 'User',
         groupIds: Object.keys(groupRoles),
-        groupRoles: groupRoles,
-        watchedCities: watchedCities
+        groupRoles: groupRoles
       });
     }
-  }, [socket, groupRoles, userName]);
+  }, [socket, groupRoles, userName, watchedCities]);
 
   useEffect(() => {
     const path = window.location.pathname;
@@ -191,19 +204,6 @@ export default function App() {
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
-      // Re-join all groups on connect/reconnect — fixes groups disappearing after refresh
-      const storedRoles = JSON.parse(localStorage.getItem('allgood_group_roles') || '{}');
-      const storedName = localStorage.getItem('allgood_name') || 'User';
-      const storedCities = JSON.parse(localStorage.getItem('allgood_watched_cities') || '[]');
-      if (Object.keys(storedRoles).length > 0) {
-        newSocket.emit('join-group', {
-          userId: MY_USER_ID,
-          userName: storedName,
-          groupIds: Object.keys(storedRoles),
-          groupRoles: storedRoles,
-          watchedCities: storedCities
-        });
-      }
       newSocket.emit('get-alerts');
       fetch('/api/alerts/active')
         .then(res => res.json())
@@ -315,8 +315,7 @@ export default function App() {
       userId: MY_USER_ID,
       userName: newName,
       groupIds: Object.keys(groupRoles),
-      groupRoles,
-      watchedCities: watchedCities
+      groupRoles
     });
   };
 
@@ -844,27 +843,6 @@ export default function App() {
                               className="text-xs font-bold text-emerald-600 hover:underline"
                             >
                               {t.invite}
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (confirm(`Leave "${groupName}"? You can rejoin with the code.`)) {
-                                  socket?.emit('leave-group', { groupId, userId: MY_USER_ID });
-                                  setGroupRoles(prev => {
-                                    const updated = { ...prev };
-                                    delete updated[groupId];
-                                    return updated;
-                                  });
-                                  setGroups(prev => {
-                                    const updated = { ...prev };
-                                    delete updated[groupId];
-                                    return updated;
-                                  });
-                                  setSelectedGroupId(null);
-                                }
-                              }}
-                              className="text-xs font-bold text-red-400 hover:text-red-600 hover:underline"
-                            >
-                              Leave
                             </button>
                           </div>
                         </div>
