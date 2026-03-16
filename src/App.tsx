@@ -88,6 +88,7 @@ export default function App() {
     return stored ? JSON.parse(stored) : {};
   });
   const [escalationAlert, setEscalationAlert] = useState<{ type: string, userName: string, groupName: string } | null>(null);
+  const [friendAlert, setFriendAlert] = useState<{ memberName: string, area: string, groupName: string } | null>(null);
   const [alertSeconds, setAlertSeconds] = useState(0);
   const [inviteGroup, setInviteGroup] = useState<{ id: string, name: string } | null>(null);
   const [showCreateCircle, setShowCreateCircle] = useState(false);
@@ -233,9 +234,27 @@ export default function App() {
     });
 
     newSocket.on('new-alert', async (alert: Alert) => {
-      if (watchedCities.length > 0 && alert.cities) {
-        const isRelevant = alert.cities.some(city => 
-          watchedCities.some(w => city.includes(w) || w.includes(city))
+      // Check if any group member is in the alert area
+      const allMembers = Object.values(groups).flatMap(g => g.members).filter(m => m.id !== MY_USER_ID);
+      const affectedMember = allMembers.find(m =>
+        m.location?.city && alert.cities?.some((c: string) =>
+          c.includes(m.location!.city!) || m.location!.city!.includes(c)
+        )
+      );
+      if (affectedMember) {
+        const memberGroup = Object.values(groups).find(g => g.members.some(m => m.id === affectedMember.id));
+        setFriendAlert({
+          memberName: affectedMember.name,
+          area: alert.area,
+          groupName: memberGroup?.name || ''
+        });
+        setTimeout(() => setFriendAlert(null), 8000);
+      }
+
+      // GPS-only filter
+      if (myCity && alert.cities) {
+        const isRelevant = alert.cities.some((city: string) =>
+          city.includes(myCity) || myCity.includes(city)
         );
         if (!isRelevant) return;
       }
@@ -555,42 +574,16 @@ export default function App() {
                 </button>
               </form>
               <div>
-                <h3 className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-2">Alert Zones</h3>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {watchedCities.map(city => (
-                    <span key={city} className="flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full">
-                      <MapPin className="w-3 h-3" />
-                      {city}
-                      <button onClick={() => setWatchedCities(prev => prev.filter(c => c !== city))}>
-                        <X className="w-3 h-3 opacity-60 hover:opacity-100" />
-                      </button>
-                    </span>
-                  ))}
-                  {watchedCities.length === 0 && (
-                    <p className="text-xs opacity-40">No zones set — receiving all alerts</p>
+                <h3 className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-2">Alert Zone</h3>
+                <div className="flex items-center gap-2 bg-stone-50 rounded-xl px-4 py-3">
+                  <MapPin className="w-4 h-4 text-emerald-600" />
+                  {myCity ? (
+                    <span className="text-sm font-bold text-emerald-700">{myCity}</span>
+                  ) : (
+                    <span className="text-sm opacity-40">Detecting location...</span>
                   )}
+                  <span className="text-[10px] opacity-40 ml-auto">Auto GPS</span>
                 </div>
-                {watchedCities.length < 3 && (
-                  <div className="flex gap-2">
-                    <input
-                      value={manualCityInput}
-                      onChange={e => setManualCityInput(e.target.value)}
-                      placeholder="Add city..."
-                      className="flex-1 bg-stone-50 border border-black/5 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500"
-                    />
-                    <button
-                      onClick={() => {
-                        if (manualCityInput.trim()) {
-                          setWatchedCities(prev => [...prev, manualCityInput.trim()].slice(0, 3));
-                          setManualCityInput('');
-                        }
-                      }}
-                      className="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-xl"
-                    >
-                      Add
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           </motion.div>
@@ -598,6 +591,29 @@ export default function App() {
       </AnimatePresence>
 
       <main className="max-w-md mx-auto px-6 py-8 pb-32">
+        {/* Friend Alert Banner */}
+        <AnimatePresence>
+          {friendAlert && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-4 bg-orange-500 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <Bell className="w-5 h-5" />
+                <div>
+                  <h4 className="font-bold text-sm">🚨 Alert near {friendAlert.memberName}</h4>
+                  <p className="text-xs opacity-90">{friendAlert.area} · {friendAlert.groupName}</p>
+                </div>
+              </div>
+              <button onClick={() => setFriendAlert(null)} className="text-xs font-bold bg-white/20 px-3 py-1 rounded-lg">
+                Dismiss
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Escalation Alert Notification */}
         <AnimatePresence>
           {escalationAlert && (
