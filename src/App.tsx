@@ -255,11 +255,12 @@ export default function App() {
     });
 
     newSocket.on('group-update', ({ groupId, name, type, members }: { groupId: string, name: string, type: string, members: User[] }) => {
-      setGroups(prev => ({ 
-        ...prev, 
-        [groupId]: { name, type, members } 
-      }));
-    });
+  console.log('📡 group-update received:', groupId, members.length, 'members');
+  setGroups(prev => {
+    console.log('📦 prev groups keys:', Object.keys(prev));
+    return { ...prev, [groupId]: { name, type, members } };
+  });
+});
 
     newSocket.on('group-created', ({ id, name, type }: { id: string, name: string, type: 'family' | 'work' | 'friends' }) => {
       setGroupRoles(prev => ({ ...prev, [id]: 'leader' as const }));
