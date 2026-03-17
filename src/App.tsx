@@ -113,6 +113,38 @@ export default function App() {
   const [showLocationSettings, setShowLocationSettings] = useState(false);
   const [manualCityInput, setManualCityInput] = useState('');
 
+  // ─── FIX: Refs to avoid stale closures in socket handlers ────────────────
+  const groupsRef = useRef(groups);
+  useEffect(() => {
+    groupsRef.current = groups;
+  }, [groups]);
+
+  const groupRolesRef = useRef(groupRoles);
+  useEffect(() => {
+    groupRolesRef.current = groupRoles;
+  }, [groupRoles]);
+
+  const myCityRef = useRef(myCity);
+  useEffect(() => {
+    myCityRef.current = myCity;
+  }, [myCity]);
+
+  const userNameRef = useRef(userName);
+  useEffect(() => {
+    userNameRef.current = userName;
+  }, [userName]);
+
+  const langRef = useRef(lang);
+  useEffect(() => {
+    langRef.current = lang;
+  }, [lang]);
+
+  const watchedCitiesRef = useRef(watchedCities);
+  useEffect(() => {
+    watchedCitiesRef.current = watchedCities;
+  }, [watchedCities]);
+  // ─────────────────────────────────────────────────────────────────────────
+
   const t = translations[lang];
   const isRTL = lang === 'he' || lang === 'ar';
 
@@ -149,16 +181,19 @@ export default function App() {
     }
   }, [groups]);
 
+  // ─── FIX: Added watchedCities to join-group emit ──────────────────────────
   useEffect(() => {
     if (socket && socket.connected) {
       socket.emit('join-group', {
         userId: MY_USER_ID,
         userName: userName || 'User',
         groupIds: Object.keys(groupRoles),
-        groupRoles: groupRoles
+        groupRoles: groupRoles,
+        watchedCities: watchedCities,
       });
     }
   }, [socket, groupRoles, userName, watchedCities]);
+  // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const path = window.location.pathname;
@@ -174,7 +209,6 @@ export default function App() {
     }
   }, []);
 
-  // FIX 1: GPS useEffect is now its own separate block, outside the socket useEffect
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(async (pos) => {
       const { latitude, longitude } = pos.coords;
@@ -233,16 +267,17 @@ export default function App() {
       setNewCircleName('');
     });
 
+    // ─── FIX: Use refs instead of stale state inside socket handler ──────────
     newSocket.on('new-alert', async (alert: Alert) => {
-      // Check if any group member is in the alert area
-      const allMembers = Object.values(groups).flatMap(g => g.members).filter(m => m.id !== MY_USER_ID);
+      // Use groupsRef.current to get live group data (fixes stale closure)
+      const allMembers = Object.values(groupsRef.current).flatMap(g => g.members).filter(m => m.id !== MY_USER_ID);
       const affectedMember = allMembers.find(m =>
         m.location?.city && alert.cities?.some((c: string) =>
           c.includes(m.location!.city!) || m.location!.city!.includes(c)
         )
       );
       if (affectedMember) {
-        const memberGroup = Object.values(groups).find(g => g.members.some(m => m.id === affectedMember.id));
+        const memberGroup = Object.values(groupsRef.current).find(g => g.members.some(m => m.id === affectedMember.id));
         setFriendAlert({
           memberName: affectedMember.name,
           area: alert.area,
@@ -251,28 +286,31 @@ export default function App() {
         setTimeout(() => setFriendAlert(null), 8000);
       }
 
-      // GPS-only filter
-      if (myCity && alert.cities) {
+      // GPS-only filter — use myCityRef.current (fixes stale closure)
+      if (myCityRef.current && alert.cities) {
         const isRelevant = alert.cities.some((city: string) =>
-          city.includes(myCity) || myCity.includes(city)
+          city.includes(myCityRef.current) || myCityRef.current.includes(city)
         );
         if (!isRelevant) return;
       }
+
       setCurrentAlert(alert);
       setMyStatus('pending');
       newSocket.emit('update-status', { status: 'pending' });
-      
-      const firstGroupId = Object.keys(groupRoles)[0];
+
+      // Use refs for lang, userName, groupRoles (fixes stale closure)
+      const currentGroupRoles = groupRolesRef.current;
+      const firstGroupId = Object.keys(currentGroupRoles)[0];
       const groupType = (firstGroupId?.split('-')[0] as 'family' | 'work' | 'friends') || 'family';
       const groupName = firstGroupId ? (firstGroupId.split('-').slice(1).join('-') || firstGroupId) : 'General';
-      const isLeader = firstGroupId ? groupRoles[firstGroupId] === 'leader' : false;
+      const isLeader = firstGroupId ? currentGroupRoles[firstGroupId] === 'leader' : false;
 
       const message = await generateAlertMessage({
-        userName: userName || 'User',
+        userName: userNameRef.current || 'User',
         groupName,
         groupType,
         area: alert.area,
-        language: lang,
+        language: langRef.current,
         isLeader
       });
       setSafetyTips(message);
@@ -282,6 +320,7 @@ export default function App() {
         setMapZoom(14);
       }
     });
+    // ─────────────────────────────────────────────────────────────────────────
 
     newSocket.on('urgent-retry', ({ message }: { message: string }) => {
       speak(message);
@@ -334,7 +373,8 @@ export default function App() {
       userId: MY_USER_ID,
       userName: newName,
       groupIds: Object.keys(groupRoles),
-      groupRoles
+      groupRoles,
+      watchedCities,
     });
   };
 
@@ -559,7 +599,7 @@ export default function App() {
                   setUserName(val);
                   localStorage.setItem('allgood_name', val);
                   setShowSettings(false);
-                  socket?.emit('join-group', { userId: MY_USER_ID, userName: val, groupIds: Object.keys(groupRoles), groupRoles });
+                  socket?.emit('join-group', { userId: MY_USER_ID, userName: val, groupIds: Object.keys(groupRoles), groupRoles, watchedCities });
                 }
               }} className="flex gap-2">
                 <input
@@ -717,8 +757,6 @@ export default function App() {
                 )}
               </motion.div>
             </section>
-
-            
           </>
         )}
 
