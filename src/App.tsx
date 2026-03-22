@@ -24,7 +24,9 @@ import {
   Search,
   Navigation,
   Phone,
-  Mail
+  Mail,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -111,6 +113,11 @@ export default function App() {
   const [myCity, setMyCity] = useState<string>('');
   const [showLocationSettings, setShowLocationSettings] = useState(false);
   const [manualCityInput, setManualCityInput] = useState('');
+  const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem('allgood_dark') === 'true');
+
+  useEffect(() => {
+    localStorage.setItem('allgood_dark', String(darkMode));
+  }, [darkMode]);
 
   const t = translations[lang];
   const isRTL = lang === 'he' || lang === 'ar';
@@ -138,22 +145,23 @@ export default function App() {
   }, [groupRoles]);
 
   useEffect(() => {
-    if (Object.keys(groups).length > 0) {
-      const hasMembers = Object.values(groups).some(g => g.members.length > 0);
-      if (hasMembers) {
-        localStorage.setItem('allgood_groups', JSON.stringify(groups));
-      }
+    // Save group names/types to localStorage (members are live from server)
+    const toSave: Record<string, { name: string, type: string, members: User[] }> = {};
+    Object.entries(groups).forEach(([id, g]) => {
+      toSave[id] = { name: g.name, type: g.type, members: [] };
+    });
+    if (Object.keys(toSave).length > 0) {
+      localStorage.setItem('allgood_groups', JSON.stringify(toSave));
     }
   }, [groups]);
 
   useEffect(() => {
-    if (socket && socket.connected && Object.keys(groupRoles).length > 0) {
+    if (socket && socket.connected) {
       socket.emit('join-group', {
         userId: MY_USER_ID,
         userName: userName || 'User',
         groupIds: Object.keys(groupRoles),
-        groupRoles: groupRoles,
-        watchedCities: watchedCities
+        groupRoles: groupRoles
       });
     }
   }, [socket, groupRoles, userName, watchedCities]);
@@ -203,18 +211,6 @@ export default function App() {
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
-      const storedRoles = JSON.parse(localStorage.getItem('allgood_group_roles') || '{}');
-      const storedName = localStorage.getItem('allgood_name') || 'User';
-      const storedCities = JSON.parse(localStorage.getItem('allgood_watched_cities') || '[]');
-      if (Object.keys(storedRoles).length > 0) {
-        newSocket.emit('join-group', {
-          userId: MY_USER_ID,
-          userName: storedName,
-          groupIds: Object.keys(storedRoles),
-          groupRoles: storedRoles,
-          watchedCities: storedCities
-        });
-      }
       newSocket.emit('get-alerts');
       fetch('/api/alerts/active')
         .then(res => res.json())
@@ -231,13 +227,10 @@ export default function App() {
     });
 
     newSocket.on('group-update', ({ groupId, name, type, members }: { groupId: string, name: string, type: string, members: User[] }) => {
-      setGroups(prev => {
-        const existing = prev[groupId];
-        const onlineIds = new Set(members.map((m: User) => m.id));
-        const offlineMembers = (existing?.members || []).filter((m: User) => !onlineIds.has(m.id));
-        const finalMembers = members.length > 0 ? [...members, ...offlineMembers] : (existing?.members || []);
-        return { ...prev, [groupId]: { name, type, members: finalMembers } };
-      });
+      setGroups(prev => ({ 
+        ...prev, 
+        [groupId]: { name, type, members } 
+      }));
     });
 
     newSocket.on('group-created', ({ id, name, type }: { id: string, name: string, type: 'family' | 'work' | 'friends' }) => {
@@ -447,7 +440,7 @@ export default function App() {
   return (
     <div className={cn(
       "min-h-screen font-sans selection:bg-emerald-100 transition-colors duration-700",
-      getScreenBg(myStatus),
+      darkMode ? "bg-stone-900 text-white" : getScreenBg(myStatus),
       isRTL ? "rtl" : "ltr"
     )} dir={isRTL ? 'rtl' : 'ltr'}>
 
@@ -498,6 +491,7 @@ export default function App() {
       {/* Header */}
       <header className={cn(
         "sticky top-0 z-40 backdrop-blur-md border-b px-6 py-4 flex items-center justify-between transition-colors duration-700",
+        darkMode ? "bg-stone-900/90 border-white/10" :
         myStatus === 'safe' ? "bg-white/80 border-black/5" : 
         myStatus === 'pending' ? "bg-yellow-100/80 border-yellow-200" : 
         myStatus === 'danger' ? "bg-red-100/80 border-red-200" : 
@@ -521,6 +515,12 @@ export default function App() {
             <option value="ru">RU</option>
             <option value="ar">AR</option>
           </select>
+          <button
+            onClick={() => setDarkMode(prev => !prev)}
+            className="p-2 hover:bg-black/5 rounded-full transition-colors"
+          >
+            {darkMode ? <Sun className="w-5 h-5 opacity-60" /> : <Moon className="w-5 h-5 opacity-60" />}
+          </button>
           <button 
             onClick={() => setShowSettings(!showSettings)}
             className="p-2 hover:bg-black/5 rounded-full transition-colors flex items-center gap-2"
@@ -538,7 +538,7 @@ export default function App() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="sticky top-[65px] z-30 bg-white border-b border-black/5 shadow-lg"
+            className={cn("sticky top-[65px] z-30 border-b shadow-lg", darkMode ? "bg-stone-800 border-white/10" : "bg-white border-black/5")}
           >
             <div className="max-w-md mx-auto px-6 py-5 space-y-4">
               <div className="flex items-center justify-between">
@@ -652,6 +652,7 @@ export default function App() {
                 layout
                 className={cn(
                   "p-6 rounded-3xl shadow-sm border transition-all duration-500",
+                  darkMode ? "bg-stone-800 border-white/10" :
                   myStatus === 'safe' ? "bg-white border-black/5" : 
                   myStatus === 'pending' ? "bg-yellow-50 border-yellow-200" :
                   myStatus === 'not-in-area' ? "bg-white border-stone-200" :
@@ -771,7 +772,7 @@ export default function App() {
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => setSelectedGroupId(groupId)}
-                            className="bg-white p-6 rounded-[32px] border border-black/5 shadow-sm flex items-center justify-between group text-left"
+                            className={cn("p-6 rounded-[32px] border shadow-sm flex items-center justify-between group text-left", darkMode ? "bg-stone-800 border-white/10" : "bg-white border-black/5")}
                           >
                             <div className="flex items-center gap-4">
                               <div className={cn(
@@ -920,7 +921,7 @@ export default function App() {
                               key={member.id}
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className="bg-white p-4 rounded-2xl border border-black/5 flex items-center justify-between shadow-sm"
+                              className={cn("p-4 rounded-2xl border flex items-center justify-between shadow-sm", darkMode ? "bg-stone-800 border-white/10" : "bg-white border-black/5")}
                             >
                               <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 rounded-2xl bg-stone-50 flex items-center justify-center font-black text-stone-300 text-lg">
@@ -1095,7 +1096,7 @@ export default function App() {
       </main>
 
       {/* Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-black/5 px-8 py-4 pb-8 flex justify-around items-center z-50">
+      <nav className={cn("fixed bottom-0 left-0 right-0 backdrop-blur-xl border-t px-8 py-4 pb-8 flex justify-around items-center z-50", darkMode ? "bg-stone-900/90 border-white/10" : "bg-white/80 border-black/5")}>
         <button 
           onClick={() => setActiveTab('status')}
           className={cn("flex flex-col items-center gap-1 transition-colors", activeTab === 'status' ? "text-emerald-600" : "opacity-40 hover:opacity-100")}
