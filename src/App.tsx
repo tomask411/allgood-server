@@ -138,22 +138,23 @@ export default function App() {
   }, [groupRoles]);
 
   useEffect(() => {
-    if (Object.keys(groups).length > 0) {
-      const hasMembers = Object.values(groups).some(g => g.members.length > 0);
-      if (hasMembers) {
-        localStorage.setItem('allgood_groups', JSON.stringify(groups));
-      }
+    // Save group names/types to localStorage (members are live from server)
+    const toSave: Record<string, { name: string, type: string, members: User[] }> = {};
+    Object.entries(groups).forEach(([id, g]) => {
+      toSave[id] = { name: g.name, type: g.type, members: [] };
+    });
+    if (Object.keys(toSave).length > 0) {
+      localStorage.setItem('allgood_groups', JSON.stringify(toSave));
     }
   }, [groups]);
 
   useEffect(() => {
-    if (socket && socket.connected && Object.keys(groupRoles).length > 0) {
+    if (socket && socket.connected) {
       socket.emit('join-group', {
         userId: MY_USER_ID,
         userName: userName || 'User',
         groupIds: Object.keys(groupRoles),
-        groupRoles: groupRoles,
-        watchedCities: watchedCities
+        groupRoles: groupRoles
       });
     }
   }, [socket, groupRoles, userName, watchedCities]);
@@ -203,19 +204,6 @@ export default function App() {
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
-      // Re-join all groups on reconnect
-      const storedRoles = JSON.parse(localStorage.getItem('allgood_group_roles') || '{}');
-      const storedName = localStorage.getItem('allgood_name') || 'User';
-      const storedCities = JSON.parse(localStorage.getItem('allgood_watched_cities') || '[]');
-      if (Object.keys(storedRoles).length > 0) {
-        newSocket.emit('join-group', {
-          userId: MY_USER_ID,
-          userName: storedName,
-          groupIds: Object.keys(storedRoles),
-          groupRoles: storedRoles,
-          watchedCities: storedCities
-        });
-      }
       newSocket.emit('get-alerts');
       fetch('/api/alerts/active')
         .then(res => res.json())
@@ -232,13 +220,10 @@ export default function App() {
     });
 
     newSocket.on('group-update', ({ groupId, name, type, members }: { groupId: string, name: string, type: string, members: User[] }) => {
-      setGroups(prev => {
-        const existing = prev[groupId];
-        const onlineIds = new Set(members.map((m: User) => m.id));
-        const offlineMembers = (existing?.members || []).filter((m: User) => !onlineIds.has(m.id));
-        const finalMembers = members.length > 0 ? [...members, ...offlineMembers] : (existing?.members || []);
-        return { ...prev, [groupId]: { name, type, members: finalMembers } };
-      });
+      setGroups(prev => ({ 
+        ...prev, 
+        [groupId]: { name, type, members } 
+      }));
     });
 
     newSocket.on('group-created', ({ id, name, type }: { id: string, name: string, type: 'family' | 'work' | 'friends' }) => {
@@ -858,6 +843,27 @@ export default function App() {
                               className="text-xs font-bold text-emerald-600 hover:underline"
                             >
                               {t.invite}
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`Delete "${groupName}"? This cannot be undone.`)) {
+                                  socket?.emit('leave-group', { groupId, userId: MY_USER_ID });
+                                  setGroupRoles(prev => {
+                                    const updated = { ...prev };
+                                    delete updated[groupId];
+                                    return updated;
+                                  });
+                                  setGroups(prev => {
+                                    const updated = { ...prev };
+                                    delete updated[groupId];
+                                    return updated;
+                                  });
+                                  setSelectedGroupId(null);
+                                }
+                              }}
+                              className="text-xs font-bold text-red-400 hover:text-red-600 hover:underline"
+                            >
+                              Delete
                             </button>
                           </div>
                         </div>
