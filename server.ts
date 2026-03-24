@@ -52,7 +52,7 @@ function loadGroups(): Map<string, any> {
 }
 
 function saveMember(userId: string, groupId: string, name: string, role: string) {
-  db.prepare('INSERT OR REPLACE INTO members (user_id, group_id, name, role, last_seen) VALUES (?, ?, ?, ?, strftime('%s','now'))').run(userId, groupId, name, role);
+  db.prepare("INSERT OR REPLACE INTO members (user_id, group_id, name, role, last_seen) VALUES (?, ?, ?, ?, strftime('%s','now'))").run(userId, groupId, name, role);
 }
 
 function removeMember(userId: string, groupId: string) {
