@@ -1192,7 +1192,7 @@ export default function App() {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative"
+              className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative text-black"
             >
               <button 
                 onClick={() => setShowCreateCircle(false)}
@@ -1263,7 +1263,7 @@ export default function App() {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative"
+              className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative text-black"
             >
               <button 
                 onClick={() => { setShowJoinCircle(false); setJoinError(null); setJoinLoading(false); }}
@@ -1325,7 +1325,7 @@ export default function App() {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative"
+              className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative text-black"
             >
               <button 
                 onClick={() => setInviteGroup(null)}
