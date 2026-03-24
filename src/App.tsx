@@ -473,7 +473,7 @@ export default function App() {
                   placeholder="Your name..."
                   autoFocus
                   maxLength={30}
-                  className="w-full bg-stone-50 border border-black/5 rounded-xl px-4 py-3 outline-none focus:border-emerald-500 transition-colors text-center font-bold text-lg"
+                  className="w-full bg-stone-50 border border-black/5 rounded-xl px-4 py-3 outline-none focus:border-emerald-500 transition-colors text-center font-bold text-lg text-black"
                 />
                 <button
                   type="submit"
@@ -1000,7 +1000,7 @@ export default function App() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search location in Israel..."
-                className="w-full bg-white border border-black/5 rounded-2xl px-12 py-4 outline-none focus:border-emerald-500 transition-all shadow-sm"
+                className={cn("w-full border rounded-2xl px-12 py-4 outline-none focus:border-emerald-500 transition-all shadow-sm text-black", darkMode ? "bg-stone-700 border-white/10" : "bg-white border-black/5")}
               />
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-30" />
               {isSearching && (
@@ -1156,7 +1156,7 @@ export default function App() {
                     value={newCircleName}
                     onChange={(e) => setNewCircleName(e.target.value)}
                     placeholder="e.g. Hiking Team"
-                    className="w-full bg-stone-50 border border-black/5 rounded-xl px-4 py-3 outline-none focus:border-emerald-500 transition-colors"
+                    className="w-full bg-stone-50 border border-black/5 rounded-xl px-4 py-3 outline-none focus:border-emerald-500 transition-colors text-black"
                   />
                 </div>
                 <div>
@@ -1234,7 +1234,7 @@ export default function App() {
                       }
                     }}
                     placeholder="e.g. family-a1b2"
-                    className="w-full bg-stone-50 border border-black/5 rounded-xl px-4 py-3 outline-none focus:border-emerald-500 transition-colors"
+                    className="w-full bg-stone-50 border border-black/5 rounded-xl px-4 py-3 outline-none focus:border-emerald-500 transition-colors text-black"
                   />
                 </div>
               </div>
