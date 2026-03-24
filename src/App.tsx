@@ -542,7 +542,7 @@ export default function App() {
           >
             <div className="max-w-md mx-auto px-6 py-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-widest opacity-40">Profile</h3>
+                <h3 className={cn("text-sm font-bold uppercase tracking-widest", darkMode ? "text-white/60" : "opacity-40")}>Profile</h3>
                 <button onClick={() => setShowSettings(false)}>
                   <X className="w-4 h-4 opacity-40" />
                 </button>
@@ -562,14 +562,14 @@ export default function App() {
                   defaultValue={userName}
                   placeholder="Your name"
                   maxLength={30}
-                  className="flex-1 bg-stone-50 border border-black/5 rounded-xl px-4 py-2.5 outline-none focus:border-emerald-500 transition-colors font-medium"
+                  className={cn("flex-1 border rounded-xl px-4 py-2.5 outline-none focus:border-emerald-500 transition-colors font-medium", darkMode ? "bg-stone-700 border-white/10 text-white" : "bg-stone-50 border-black/5")}
                 />
                 <button type="submit" className="bg-black text-white font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-stone-800 transition-colors">
                   Save
                 </button>
               </form>
               <div>
-                <h3 className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-2">Alert Zones</h3>
+                <h3 className={cn("text-[10px] font-bold uppercase tracking-widest mb-2", darkMode ? "text-white/60" : "opacity-40")}>Alert Zones</h3>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {watchedCities.map(city => (
                     <span key={city} className="flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full">
@@ -581,7 +581,7 @@ export default function App() {
                     </span>
                   ))}
                   {watchedCities.length === 0 && (
-                    <p className="text-xs opacity-40">No zones set — receiving all alerts</p>
+                    <p className={cn("text-xs", darkMode ? "text-white/40" : "opacity-40")}>No zones set — receiving all alerts</p>
                   )}
                 </div>
                 {watchedCities.length < 3 && (
@@ -590,7 +590,7 @@ export default function App() {
                       value={manualCityInput}
                       onChange={e => setManualCityInput(e.target.value)}
                       placeholder="Add city..."
-                      className="flex-1 bg-stone-50 border border-black/5 rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                      className={cn("flex-1 border rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500", darkMode ? "bg-stone-700 border-white/10 text-white" : "bg-stone-50 border-black/5")}
                     />
                     <button
                       onClick={() => {
@@ -644,7 +644,7 @@ export default function App() {
           <>
             <section className="mb-8">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold uppercase tracking-wider opacity-50">{t.yourStatus}</h2>
+                <h2 className={cn("text-sm font-semibold uppercase tracking-wider", darkMode ? "text-white/50" : "opacity-50")}>{t.yourStatus}</h2>
                 <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase">Live</span>
               </div>
               
@@ -694,7 +694,7 @@ export default function App() {
                         </div>
                       )}
                     </div>
-                    <p className="opacity-60 text-sm">
+                    <p className={cn("text-sm", darkMode ? "text-white/60" : "opacity-60")}>
                       {myStatus === 'safe' ? t.noAlerts : 
                        myStatus === 'pending' ? "Please confirm you are safe." :
                        myStatus === 'not-in-area' ? "You are currently outside the alert zone." :
@@ -733,11 +733,11 @@ export default function App() {
                   className="space-y-6"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-sm font-semibold uppercase tracking-wider opacity-50">{t.circles}</h2>
+                    <h2 className={cn("text-sm font-semibold uppercase tracking-wider", darkMode ? "text-white/50" : "opacity-50")}>{t.circles}</h2>
                     <div className="flex gap-2">
                       <button 
                         onClick={() => setShowJoinCircle(true)}
-                        className="flex items-center gap-1 text-xs font-bold text-stone-600 bg-stone-100 px-3 py-1.5 rounded-lg hover:bg-stone-200 transition-colors"
+                        className={cn("flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors", darkMode ? "text-white/70 bg-white/10 hover:bg-white/20" : "text-stone-600 bg-stone-100 hover:bg-stone-200")}
                       >
                         <QrCode className="w-3 h-3" />
                         {t.joinCircle}
@@ -755,7 +755,7 @@ export default function App() {
                   {Object.keys(groups).length === 0 ? (
                     <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-black/10">
                       <Users className="w-12 h-12 opacity-10 mx-auto mb-4" />
-                      <p className="text-sm opacity-40">No circles yet. Create one to get started.</p>
+                      <p className={cn("text-sm", darkMode ? "text-white/40" : "opacity-40")}>No circles yet. Create one to get started.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-4">
@@ -806,7 +806,7 @@ export default function App() {
                                       </div>
                                     )}
                                   </div>
-                                  <span className="text-xs font-bold opacity-40">
+                                  <span className={cn("text-xs font-bold", darkMode ? "text-white/40" : "opacity-40")}>
                                     {safeCount}/{totalCount} {t.safeStatus}
                                   </span>
                                 </div>
@@ -873,7 +873,7 @@ export default function App() {
                           </div>
                           <div>
                             <h2 className="text-2xl font-black tracking-tight">{groupName}</h2>
-                            <p className="text-sm opacity-40 font-medium capitalize">{groupType} Circle • {members.length} members</p>
+                            <p className={cn("text-sm font-medium capitalize", darkMode ? "text-white/40" : "opacity-40")}>{groupType} Circle • {members.length} members</p>
                           </div>
                         </div>
 
@@ -924,7 +924,7 @@ export default function App() {
                               className={cn("p-4 rounded-2xl border flex items-center justify-between shadow-sm", darkMode ? "bg-stone-800 border-white/10" : "bg-white border-black/5")}
                             >
                               <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-2xl bg-stone-50 flex items-center justify-center font-black text-stone-300 text-lg">
+                                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg", darkMode ? "bg-stone-700 text-stone-400" : "bg-stone-50 text-stone-300")}>
                                   {member.name[0]}
                                 </div>
                                 <div>
@@ -933,7 +933,7 @@ export default function App() {
                                     {member.id === MY_USER_ID && <span className="text-[8px] font-black bg-stone-100 px-1.5 py-0.5 rounded uppercase opacity-40">You</span>}
                                   </div>
                                   <div className="flex flex-col gap-0.5">
-                                    <p className="text-xs opacity-50 flex items-center gap-1 font-medium">
+                                    <p className={cn("text-xs flex items-center gap-1 font-medium", darkMode ? "text-white/50" : "opacity-50")}>
                                       <MapPin className="w-3 h-3" /> {member.location?.name || 'Home'}
                                     </p>
                                     {member.phone && (
@@ -947,7 +947,7 @@ export default function App() {
                                     {member.email && (
                                       <a 
                                         href={`mailto:${member.email}`}
-                                        className="text-xs opacity-40 flex items-center gap-1 font-medium hover:underline"
+                                        className={cn("text-xs flex items-center gap-1 font-medium hover:underline", darkMode ? "text-white/40" : "opacity-40")}
                                       >
                                         <Mail className="w-3 h-3" /> {member.email}
                                       </a>
