@@ -753,7 +753,7 @@ export default function App() {
                   </div>
 
                   {Object.keys(groups).length === 0 ? (
-                    <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-black/10">
+                    <div className={cn("text-center py-12 rounded-3xl border border-dashed", darkMode ? "bg-stone-800 border-white/10" : "bg-white border-black/10")}>
                       <Users className="w-12 h-12 opacity-10 mx-auto mb-4" />
                       <p className={cn("text-sm", darkMode ? "text-white/40" : "opacity-40")}>No circles yet. Create one to get started.</p>
                     </div>
@@ -947,7 +947,7 @@ export default function App() {
                               <button 
                                 onClick={() => handleGenerateSummary(groupId, groupName, members)}
                                 disabled={isGeneratingSummary[groupId]}
-                                className="w-full py-4 bg-white border border-dashed border-black/10 rounded-3xl text-xs font-bold uppercase tracking-widest opacity-40 hover:opacity-100 transition-all flex items-center justify-center gap-2"
+                                className={cn("w-full py-4 border border-dashed rounded-3xl text-xs font-bold uppercase tracking-widest opacity-40 hover:opacity-100 transition-all flex items-center justify-center gap-2", darkMode ? "bg-stone-800 border-white/10 text-white" : "bg-white border-black/10")}
                               >
                                 {isGeneratingSummary[groupId] ? (
                                   <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
