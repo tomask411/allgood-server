@@ -744,7 +744,7 @@ export default function App() {
                       </button>
                       <button 
                         onClick={() => setShowCreateCircle(true)}
-                        className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors"
+                        className={cn("flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors", darkMode ? "text-emerald-400 bg-emerald-900/30 hover:bg-emerald-900/50" : "text-emerald-600 bg-emerald-50 hover:bg-emerald-100")}
                       >
                         <Users className="w-3 h-3" />
                         {t.createCircle}
@@ -777,9 +777,9 @@ export default function App() {
                             <div className="flex items-center gap-4">
                               <div className={cn(
                                 "w-14 h-14 rounded-2xl flex items-center justify-center transition-colors",
-                                groupType === 'family' ? "bg-red-50 text-red-600" :
-                                groupType === 'work' ? "bg-blue-50 text-blue-600" :
-                                "bg-emerald-50 text-emerald-600"
+                                groupType === 'family' ? (darkMode ? "bg-red-900/30 text-red-400" : "bg-red-50 text-red-600") :
+                                groupType === 'work' ? (darkMode ? "bg-blue-900/30 text-blue-400" : "bg-blue-50 text-blue-600") :
+                                (darkMode ? "bg-emerald-900/30 text-emerald-400" : "bg-emerald-50 text-emerald-600")
                               )}>
                                 <Icon className="w-7 h-7" />
                               </div>
@@ -788,7 +788,7 @@ export default function App() {
                                   <h3 className="font-black text-lg tracking-tight">{groupName}</h3>
                                   <span className={cn(
                                     "text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest",
-                                    myRole === 'leader' ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-400"
+                                    myRole === 'leader' ? "bg-emerald-600 text-white" : darkMode ? "bg-stone-700 text-stone-300" : "bg-stone-100 text-stone-400"
                                   )}>
                                     {myRole}
                                   </span>
@@ -796,12 +796,12 @@ export default function App() {
                                 <div className="flex items-center gap-2 mt-1">
                                   <div className="flex -space-x-2">
                                     {members.slice(0, 3).map((m, i) => (
-                                      <div key={m.id} className="w-6 h-6 rounded-full border-2 border-white bg-stone-100 flex items-center justify-center text-[10px] font-bold text-stone-400">
+                                      <div key={m.id} className={cn("w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold", darkMode ? "bg-stone-600 text-stone-300" : "bg-stone-100 text-stone-400")}>
                                         {m.name[0]}
                                       </div>
                                     ))}
                                     {members.length > 3 && (
-                                      <div className="w-6 h-6 rounded-full border-2 border-white bg-stone-50 flex items-center justify-center text-[8px] font-bold text-stone-400">
+                                      <div className={cn("w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[8px] font-bold", darkMode ? "bg-stone-600 text-stone-300" : "bg-stone-50 text-stone-400")}>
                                         +{members.length - 3}
                                       </div>
                                     )}
@@ -849,7 +849,7 @@ export default function App() {
                           <div className="flex items-center gap-3">
                             <span className={cn(
                               "text-[10px] font-black px-2 py-1 rounded-lg border uppercase",
-                              myRoleInGroup === 'leader' ? "bg-emerald-600 border-emerald-600 text-white" : "bg-white border-black/10 text-black/40"
+                              myRoleInGroup === 'leader' ? "bg-emerald-600 border-emerald-600 text-white" : darkMode ? "bg-stone-700 border-white/10 text-white/40" : "bg-white border-black/10 text-black/40"
                             )}>
                               {myRoleInGroup}
                             </span>
@@ -911,9 +911,9 @@ export default function App() {
                         <div className="flex items-center gap-4 mb-8">
                           <div className={cn(
                             "w-16 h-16 rounded-[24px] flex items-center justify-center",
-                            groupType === 'family' ? "bg-red-50 text-red-600" :
-                            groupType === 'work' ? "bg-blue-50 text-blue-600" :
-                            "bg-emerald-50 text-emerald-600"
+                            groupType === 'family' ? (darkMode ? "bg-red-900/30 text-red-400" : "bg-red-50 text-red-600") :
+                            groupType === 'work' ? (darkMode ? "bg-blue-900/30 text-blue-400" : "bg-blue-50 text-blue-600") :
+                            (darkMode ? "bg-emerald-900/30 text-emerald-400" : "bg-emerald-50 text-emerald-600")
                           )}>
                             <Icon className="w-8 h-8" />
                           </div>
