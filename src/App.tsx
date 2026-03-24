@@ -96,6 +96,8 @@ export default function App() {
   const [showJoinCircle, setShowJoinCircle] = useState(false);
   const [newCircleName, setNewCircleName] = useState('');
   const [joinCircleCode, setJoinCircleCode] = useState('');
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [joinLoading, setJoinLoading] = useState(false);
   const [newCircleType, setNewCircleType] = useState<'family' | 'work' | 'friends'>('family');
   const [groupSummaries, setGroupSummaries] = useState<Record<string, string>>({});
   const [isGeneratingSummary, setIsGeneratingSummary] = useState<Record<string, boolean>>({});
@@ -239,6 +241,23 @@ export default function App() {
       setNewCircleName('');
     });
 
+    newSocket.on('group-check-result', ({ groupId, exists }: { groupId: string, exists: boolean }) => {
+      setJoinLoading(false);
+      if (exists) {
+        setGroupRoles(prev => {
+          if (prev[groupId]) return prev;
+          return { ...prev, [groupId]: 'member' as const };
+        });
+        setShowJoinCircle(false);
+        setJoinCircleCode('');
+        setJoinError(null);
+        setActiveTab('groups');
+        setSelectedGroupId(groupId);
+      } else {
+        setJoinError('Circle not found. Check the code and try again.');
+      }
+    });
+
     newSocket.on('new-alert', async (alert: Alert) => {
       if (watchedCities.length > 0 && alert.cities) {
         const isRelevant = alert.cities.some(city => 
@@ -334,16 +353,10 @@ export default function App() {
 
   const handleJoinCircle = (code?: string) => {
     const finalCode = code || joinCircleCode.trim();
-    if (finalCode) {
-      setGroupRoles(prev => {
-        if (prev[finalCode]) return prev;
-        return { ...prev, [finalCode]: 'member' as const };
-      });
-      setShowJoinCircle(false);
-      setJoinCircleCode('');
-      setActiveTab('groups');
-      setSelectedGroupId(finalCode);
-    }
+    if (!finalCode) return;
+    setJoinError(null);
+    setJoinLoading(true);
+    socket?.emit('check-group', { groupId: finalCode });
   };
 
   const handleGenerateSummary = async (groupId: string, groupName: string, members: User[]) => {
@@ -744,7 +757,7 @@ export default function App() {
                       </button>
                       <button 
                         onClick={() => setShowCreateCircle(true)}
-                        className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors"
+                        className={cn("flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors", darkMode ? "text-emerald-400 bg-emerald-900/30 hover:bg-emerald-900/50" : "text-emerald-600 bg-emerald-50 hover:bg-emerald-100")}
                       >
                         <Users className="w-3 h-3" />
                         {t.createCircle}
@@ -777,9 +790,9 @@ export default function App() {
                             <div className="flex items-center gap-4">
                               <div className={cn(
                                 "w-14 h-14 rounded-2xl flex items-center justify-center transition-colors",
-                                groupType === 'family' ? "bg-red-50 text-red-600" :
-                                groupType === 'work' ? "bg-blue-50 text-blue-600" :
-                                "bg-emerald-50 text-emerald-600"
+                                groupType === 'family' ? (darkMode ? "bg-red-900/30 text-red-400" : "bg-red-50 text-red-600") :
+                                groupType === 'work' ? (darkMode ? "bg-blue-900/30 text-blue-400" : "bg-blue-50 text-blue-600") :
+                                (darkMode ? "bg-emerald-900/30 text-emerald-400" : "bg-emerald-50 text-emerald-600")
                               )}>
                                 <Icon className="w-7 h-7" />
                               </div>
@@ -788,7 +801,7 @@ export default function App() {
                                   <h3 className="font-black text-lg tracking-tight">{groupName}</h3>
                                   <span className={cn(
                                     "text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest",
-                                    myRole === 'leader' ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-400"
+                                    myRole === 'leader' ? "bg-emerald-600 text-white" : darkMode ? "bg-stone-700 text-stone-300" : "bg-stone-100 text-stone-400"
                                   )}>
                                     {myRole}
                                   </span>
@@ -796,12 +809,12 @@ export default function App() {
                                 <div className="flex items-center gap-2 mt-1">
                                   <div className="flex -space-x-2">
                                     {members.slice(0, 3).map((m, i) => (
-                                      <div key={m.id} className="w-6 h-6 rounded-full border-2 border-white bg-stone-100 flex items-center justify-center text-[10px] font-bold text-stone-400">
+                                      <div key={m.id} className={cn("w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold", darkMode ? "bg-stone-600 text-stone-300" : "bg-stone-100 text-stone-400")}>
                                         {m.name[0]}
                                       </div>
                                     ))}
                                     {members.length > 3 && (
-                                      <div className="w-6 h-6 rounded-full border-2 border-white bg-stone-50 flex items-center justify-center text-[8px] font-bold text-stone-400">
+                                      <div className={cn("w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[8px] font-bold", darkMode ? "bg-stone-600 text-stone-300" : "bg-stone-50 text-stone-400")}>
                                         +{members.length - 3}
                                       </div>
                                     )}
@@ -849,7 +862,7 @@ export default function App() {
                           <div className="flex items-center gap-3">
                             <span className={cn(
                               "text-[10px] font-black px-2 py-1 rounded-lg border uppercase",
-                              myRoleInGroup === 'leader' ? "bg-emerald-600 border-emerald-600 text-white" : "bg-white border-black/10 text-black/40"
+                              myRoleInGroup === 'leader' ? "bg-emerald-600 border-emerald-600 text-white" : darkMode ? "bg-stone-700 border-white/10 text-white/40" : "bg-white border-black/10 text-black/40"
                             )}>
                               {myRoleInGroup}
                             </span>
@@ -911,9 +924,9 @@ export default function App() {
                         <div className="flex items-center gap-4 mb-8">
                           <div className={cn(
                             "w-16 h-16 rounded-[24px] flex items-center justify-center",
-                            groupType === 'family' ? "bg-red-50 text-red-600" :
-                            groupType === 'work' ? "bg-blue-50 text-blue-600" :
-                            "bg-emerald-50 text-emerald-600"
+                            groupType === 'family' ? (darkMode ? "bg-red-900/30 text-red-400" : "bg-red-50 text-red-600") :
+                            groupType === 'work' ? (darkMode ? "bg-blue-900/30 text-blue-400" : "bg-blue-50 text-blue-600") :
+                            (darkMode ? "bg-emerald-900/30 text-emerald-400" : "bg-emerald-50 text-emerald-600")
                           )}>
                             <Icon className="w-8 h-8" />
                           </div>
@@ -1179,7 +1192,7 @@ export default function App() {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className={cn("w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative", darkMode ? "bg-stone-800" : "bg-white")}
+              className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative"
             >
               <button 
                 onClick={() => setShowCreateCircle(false)}
@@ -1192,21 +1205,21 @@ export default function App() {
                   <Users className="w-8 h-8 text-emerald-600" />
                 </div>
                 <h3 className="text-xl font-bold tracking-tight">{t.createCircle}</h3>
-                <p className={cn("text-sm mt-1", darkMode ? "text-white/60" : "opacity-60")}>Build your safety network</p>
+                <p className="text-sm opacity-60 mt-1">Build your safety network</p>
               </div>
               <div className="space-y-4 mb-8">
                 <div>
-                  <label className={cn("text-[10px] font-bold uppercase tracking-widest mb-1.5 block", darkMode ? "text-white/40" : "opacity-40")}>Circle Name</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-1.5 block">Circle Name</label>
                   <input 
                     type="text" 
                     value={newCircleName}
                     onChange={(e) => setNewCircleName(e.target.value)}
                     placeholder="e.g. Hiking Team"
-                    className={cn("w-full border rounded-xl px-4 py-3 outline-none focus:border-emerald-500 transition-colors text-black", darkMode ? "bg-stone-700 border-white/10" : "bg-stone-50 border-black/5")}
+                    className="w-full bg-stone-50 border border-black/5 rounded-xl px-4 py-3 outline-none focus:border-emerald-500 transition-colors text-black"
                   />
                 </div>
                 <div>
-                  <label className={cn("text-[10px] font-bold uppercase tracking-widest mb-1.5 block", darkMode ? "text-white/40" : "opacity-40")}>Circle Type</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-1.5 block">Circle Type</label>
                   <div className="grid grid-cols-3 gap-2">
                     {(['family', 'work', 'friends'] as const).map((type) => (
                       <button
@@ -1216,7 +1229,7 @@ export default function App() {
                           "py-2 rounded-xl text-xs font-bold capitalize border transition-all",
                           newCircleType === type 
                             ? "bg-emerald-600 border-emerald-600 text-white" 
-                            : darkMode ? "bg-stone-700 border-white/10 text-white/60" : "bg-white border-black/5 opacity-60"
+                            : "bg-white border-black/5 opacity-60"
                         )}
                       >
                         {t[type]}
@@ -1250,24 +1263,24 @@ export default function App() {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className={cn("w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative", darkMode ? "bg-stone-800" : "bg-white")}
+              className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative"
             >
               <button 
-                onClick={() => setShowJoinCircle(false)}
+                onClick={() => { setShowJoinCircle(false); setJoinError(null); setJoinLoading(false); }}
                 className="absolute top-6 right-6 p-2 hover:bg-black/5 rounded-full transition-colors"
               >
                 <X className="w-5 h-5 opacity-40" />
               </button>
               <div className="text-center mb-8">
-                <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4", darkMode ? "bg-stone-700" : "bg-stone-50")}>
-                  <QrCode className={cn("w-8 h-8", darkMode ? "text-stone-300" : "text-stone-600")} />
+                <div className="w-16 h-16 bg-stone-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <QrCode className="w-8 h-8 text-stone-600" />
                 </div>
                 <h3 className="text-xl font-bold tracking-tight">{t.joinCircle}</h3>
-                <p className={cn("text-sm mt-1", darkMode ? "text-white/60" : "opacity-60")}>Enter a circle code or paste a link</p>
+                <p className="text-sm opacity-60 mt-1">Enter a circle code or paste a link</p>
               </div>
               <div className="space-y-4 mb-8">
                 <div>
-                  <label className={cn("text-[10px] font-bold uppercase tracking-widest mb-1.5 block", darkMode ? "text-white/40" : "opacity-40")}>{t.enterCode}</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-1.5 block">{t.enterCode}</label>
                   <input 
                     type="text" 
                     value={joinCircleCode}
@@ -1284,12 +1297,15 @@ export default function App() {
                   />
                 </div>
               </div>
+                {joinError && (
+                  <p className="text-red-500 text-xs font-bold text-center mb-2">{joinError}</p>
+                )}
               <button 
                 onClick={() => handleJoinCircle()}
-                disabled={!joinCircleCode.trim()}
-                className="w-full bg-black text-white font-bold py-4 rounded-2xl hover:bg-stone-800 transition-colors disabled:opacity-20"
+                disabled={!joinCircleCode.trim() || joinLoading}
+                className="w-full bg-black text-white font-bold py-4 rounded-2xl hover:bg-stone-800 transition-colors disabled:opacity-20 flex items-center justify-center gap-2"
               >
-                {t.join}
+                {joinLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : t.join}
               </button>
             </motion.div>
           </motion.div>
