@@ -232,6 +232,11 @@ async function startServer() {
       console.log(`✅ Group created and saved: ${groupId} (${name})`);
     });
 
+    socket.on('check-group', ({ groupId }: { groupId: string }) => {
+      const exists = groups.has(groupId) || !!db.prepare('SELECT id FROM groups WHERE id = ?').get(groupId);
+      socket.emit('group-check-result', { groupId, exists });
+    });
+
     socket.on('join-group', ({ userId, userName, userPhone, userEmail, groupIds, groupRoles, watchedCities }) => {
       const user = {
         id: userId, name: userName, phone: userPhone, email: userEmail,
