@@ -18,6 +18,14 @@ db.exec(`
     type TEXT NOT NULL,
     created_at INTEGER DEFAULT (strftime('%s','now'))
   );
+  CREATE TABLE IF NOT EXISTS members (
+    user_id TEXT NOT NULL,
+    group_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    role TEXT DEFAULT 'member',
+    last_seen INTEGER DEFAULT (strftime('%s','now')),
+    PRIMARY KEY (user_id, group_id)
+  );
 `);
 
 function saveGroup(id: string, name: string, type: string) {
@@ -28,9 +36,27 @@ function loadGroups(): Map<string, any> {
   const rows = db.prepare('SELECT * FROM groups').all() as any[];
   const map = new Map();
   rows.forEach(row => {
-    map.set(row.id, { id: row.id, name: row.name, type: row.type, members: [] });
+    // Load saved members for this group
+    const memberRows = db.prepare('SELECT * FROM members WHERE group_id = ?').all(row.id) as any[];
+    const members = memberRows.map((m: any) => ({
+      id: m.user_id,
+      name: m.name,
+      status: 'unknown',
+      groupIds: [row.id],
+      groupRoles: { [row.id]: m.role },
+      lastUpdate: m.last_seen * 1000
+    }));
+    map.set(row.id, { id: row.id, name: row.name, type: row.type, members });
   });
   return map;
+}
+
+function saveMember(userId: string, groupId: string, name: string, role: string) {
+  db.prepare('INSERT OR REPLACE INTO members (user_id, group_id, name, role, last_seen) VALUES (?, ?, ?, ?, strftime('%s','now'))').run(userId, groupId, name, role);
+}
+
+function removeMember(userId: string, groupId: string) {
+  db.prepare('DELETE FROM members WHERE user_id = ? AND group_id = ?').run(userId, groupId);
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -232,6 +258,10 @@ async function startServer() {
           if (idx === -1) group.members.push(user);
           else group.members[idx] = user;
 
+          // Save member to SQLite
+          const role = (groupRoles && groupRoles[groupId]) || 'member';
+          saveMember(userId, groupId, userName, role);
+
           io.to(groupId).emit('group-update', {
             groupId, name: group.name, type: group.type, members: group.members
           });
@@ -252,6 +282,8 @@ async function startServer() {
         });
         console.log(`👋 User ${userId} left group ${groupId}`);
       }
+      // Remove from SQLite
+      removeMember(userId, groupId);
       socket.leave(groupId);
       const user = users.get(socket.id);
       if (user) {
