@@ -859,6 +859,52 @@ export default function App() {
                             >
                               {t.invite}
                             </button>
+                            {myRoleInGroup === 'member' && (
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Leave "${groupName}"?`)) {
+                                    socket?.emit('leave-group', { groupId, userId: MY_USER_ID });
+                                    setGroupRoles(prev => {
+                                      const updated = { ...prev };
+                                      delete updated[groupId];
+                                      return updated;
+                                    });
+                                    setGroups(prev => {
+                                      const updated = { ...prev };
+                                      delete updated[groupId];
+                                      return updated;
+                                    });
+                                    setSelectedGroupId(null);
+                                  }
+                                }}
+                                className="text-xs font-bold text-red-400 hover:text-red-600 hover:underline"
+                              >
+                                Leave
+                              </button>
+                            )}
+                            {myRoleInGroup === 'leader' && (
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Delete "${groupName}"? This cannot be undone.`)) {
+                                    socket?.emit('leave-group', { groupId, userId: MY_USER_ID });
+                                    setGroupRoles(prev => {
+                                      const updated = { ...prev };
+                                      delete updated[groupId];
+                                      return updated;
+                                    });
+                                    setGroups(prev => {
+                                      const updated = { ...prev };
+                                      delete updated[groupId];
+                                      return updated;
+                                    });
+                                    setSelectedGroupId(null);
+                                  }
+                                }}
+                                className="text-xs font-bold text-red-400 hover:text-red-600 hover:underline"
+                              >
+                                Delete
+                              </button>
+                            )}
                           </div>
                         </div>
 
