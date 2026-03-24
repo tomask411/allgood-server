@@ -854,7 +854,7 @@ export default function App() {
                         <div className="flex items-center justify-between">
                           <button 
                             onClick={() => setSelectedGroupId(null)}
-                            className="flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 transition-opacity"
+                            className={cn("flex items-center gap-2 text-sm font-bold hover:opacity-100 transition-opacity", darkMode ? "text-white/40" : "opacity-40")}
                           >
                             <ChevronRight className={cn("w-4 h-4", isRTL ? "" : "rotate-180")} />
                             {t.backToCircles}
@@ -868,7 +868,7 @@ export default function App() {
                             </span>
                             <button 
                               onClick={() => setInviteGroup({ id: groupId, name: groupName })}
-                              className="text-xs font-bold text-emerald-600 hover:underline"
+                              className={cn("text-xs font-bold hover:underline", darkMode ? "text-emerald-400" : "text-emerald-600")}
                             >
                               {t.invite}
                             </button>
@@ -890,7 +890,7 @@ export default function App() {
                                     setSelectedGroupId(null);
                                   }
                                 }}
-                                className="text-xs font-bold text-red-400 hover:text-red-600 hover:underline"
+                                className={cn("text-xs font-bold hover:underline", darkMode ? "text-red-400 hover:text-red-300" : "text-red-400 hover:text-red-600")}
                               >
                                 Leave
                               </button>
@@ -913,7 +913,7 @@ export default function App() {
                                     setSelectedGroupId(null);
                                   }
                                 }}
-                                className="text-xs font-bold text-red-400 hover:text-red-600 hover:underline"
+                                className={cn("text-xs font-bold hover:underline", darkMode ? "text-red-400 hover:text-red-300" : "text-red-400 hover:text-red-600")}
                               >
                                 Delete
                               </button>
@@ -989,7 +989,7 @@ export default function App() {
                                 <div>
                                   <div className="flex items-center gap-2">
                                     <h4 className="font-bold">{member.name}</h4>
-                                    {member.id === MY_USER_ID && <span className="text-[8px] font-black bg-stone-100 px-1.5 py-0.5 rounded uppercase opacity-40">You</span>}
+                                    {member.id === MY_USER_ID && <span className={cn("text-[8px] font-black px-1.5 py-0.5 rounded uppercase", darkMode ? "bg-stone-700 text-white/40" : "bg-stone-100 opacity-40")}>You</span>}
                                   </div>
                                   <div className="flex flex-col gap-0.5">
                                     <p className={cn("text-xs flex items-center gap-1 font-medium", darkMode ? "text-white/50" : "opacity-50")}>
@@ -1158,21 +1158,21 @@ export default function App() {
       <nav className={cn("fixed bottom-0 left-0 right-0 backdrop-blur-xl border-t px-8 py-4 pb-8 flex justify-around items-center z-50", darkMode ? "bg-stone-900/90 border-white/10" : "bg-white/80 border-black/5")}>
         <button 
           onClick={() => setActiveTab('status')}
-          className={cn("flex flex-col items-center gap-1 transition-colors", activeTab === 'status' ? "text-emerald-600" : "opacity-40 hover:opacity-100")}
+          className={cn("flex flex-col items-center gap-1 transition-colors", activeTab === 'status' ? "text-emerald-600" : darkMode ? "text-white/40 hover:text-white" : "opacity-40 hover:opacity-100")}
         >
           <Shield className="w-6 h-6" />
           <span className="text-[10px] font-bold uppercase tracking-widest">{t.status}</span>
         </button>
         <button 
           onClick={() => setActiveTab('groups')}
-          className={cn("flex flex-col items-center gap-1 transition-colors", activeTab === 'groups' ? "text-emerald-600" : "opacity-40 hover:opacity-100")}
+          className={cn("flex flex-col items-center gap-1 transition-colors", activeTab === 'groups' ? "text-emerald-600" : darkMode ? "text-white/40 hover:text-white" : "opacity-40 hover:opacity-100")}
         >
           <Users className="w-6 h-6" />
           <span className="text-[10px] font-bold uppercase tracking-widest">{t.circles}</span>
         </button>
         <button 
           onClick={() => setActiveTab('map')}
-          className={cn("flex flex-col items-center gap-1 transition-colors", activeTab === 'map' ? "text-emerald-600" : "opacity-40 hover:opacity-100")}
+          className={cn("flex flex-col items-center gap-1 transition-colors", activeTab === 'map' ? "text-emerald-600" : darkMode ? "text-white/40 hover:text-white" : "opacity-40 hover:opacity-100")}
         >
           <MapIcon className="w-6 h-6" />
           <span className="text-[10px] font-bold uppercase tracking-widest">{t.map}</span>
@@ -1229,7 +1229,7 @@ export default function App() {
                           "py-2 rounded-xl text-xs font-bold capitalize border transition-all",
                           newCircleType === type 
                             ? "bg-emerald-600 border-emerald-600 text-white" 
-                            : "bg-white border-black/5 opacity-60"
+                            : darkMode ? "bg-stone-700 border-white/10 text-white/60" : "bg-white border-black/5 opacity-60"
                         )}
                       >
                         {t[type]}
@@ -1361,7 +1361,7 @@ export default function App() {
                     navigator.clipboard.writeText(link);
                   }
                 }}
-                className="w-full mb-4 bg-stone-100 text-stone-700 font-bold py-3 rounded-2xl hover:bg-stone-200 transition-colors text-sm flex items-center justify-center gap-2"
+                className={cn("w-full mb-4 font-bold py-3 rounded-2xl transition-colors text-sm flex items-center justify-center gap-2", darkMode ? "bg-stone-700 text-white hover:bg-stone-600" : "bg-stone-100 text-stone-700 hover:bg-stone-200")}
               >
                 <ChevronRight className="w-4 h-4" />
                 Copy / Share Link
