@@ -338,8 +338,19 @@ async function startServer() {
         if (!groups.has(groupId)) {
           const row = db.prepare('SELECT * FROM groups WHERE id = ?').get(groupId) as any;
           if (row) {
-            groups.set(groupId, { id: row.id, name: row.name, type: row.type, members: [] });
-            console.log(`♻️ Restored group from DB: ${groupId}`);
+            // Restore members from DB too
+            const memberRows = db.prepare('SELECT * FROM members WHERE group_id = ?').all(row.id) as any[];
+            const savedMembers = memberRows.map((m: any) => ({
+              id: m.user_id,
+              name: m.name,
+              status: 'unknown',
+              socketId: null,
+              groupIds: [row.id],
+              groupRoles: { [row.id]: m.role },
+              lastUpdate: m.last_seen * 1000
+            }));
+            groups.set(groupId, { id: row.id, name: row.name, type: row.type, members: savedMembers });
+            console.log(`♻️ Restored group from DB: ${groupId} with ${savedMembers.length} members`);
           }
         }
 
