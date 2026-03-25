@@ -598,25 +598,40 @@ export default function App() {
                   )}
                 </div>
                 {watchedCities.length < 3 && (
-                  <div className="flex gap-2">
-                    <input
-                      value={manualCityInput}
-                      onChange={e => setManualCityInput(e.target.value)}
-                      placeholder="Add city..."
-                      className={cn("flex-1 border rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500", darkMode ? "bg-stone-700 border-white/10 text-white" : "bg-stone-50 border-black/5")}
-                    />
-                    <button
-                      onClick={() => {
-                        if (manualCityInput.trim()) {
-                          setWatchedCities(prev => [...prev, manualCityInput.trim()].slice(0, 3));
-                          setManualCityInput('');
-                        }
-                      }}
-                      className="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-xl"
-                    >
-                      Add
-                    </button>
-                  </div>
+                  <select
+                    value=""
+                    onChange={e => {
+                      const city = e.target.value;
+                      if (city && !watchedCities.includes(city)) {
+                        setWatchedCities(prev => [...prev, city].slice(0, 3));
+                      }
+                    }}
+                    className={cn("w-full border rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-500", darkMode ? "bg-stone-700 border-white/10 text-white" : "bg-stone-50 border-black/5")}
+                  >
+                    <option value="">+ בחר עיר...</option>
+                    {[
+                      'אביחיל','אבן יהודה','אור יהודה','אור עקיבא','אילת','אלעד','אריאל','אשדוד','אשקלון',
+                      'באר שבע','באר יעקב','בית שאן','בית שמש','בני ברק','בקה אל גרביה','בת ים',
+                      'גבעת שמואל','גבעתיים','גדרה','גן יבנה',
+                      'דימונה',
+                      'הוד השרון','הרצליה','חדרה','חולון','חיפה',
+                      'טבריה','טירה','טירת כרמל','טייבה',
+                      'יבנה','יהוד','יוקנעם','ירושלים',
+                      'כפר יונה','כפר סבא','כפר קאסם','כרמיאל',
+                      'לוד','לקיה',
+                      'מגדל העמק','מודיעין','מודיעין עילית',
+                      'נהריה','נס ציונה','נצרת','נצרת עילית','נתיבות','נתניה',
+                      'עכו','עפולה','עראבה',
+                      'פתח תקווה',
+                      'צפת',
+                      'קלנסווה','קריית אונו','קריית אתא','קריית ביאליק','קריית גת','קריית מוצקין','קריית מלאכי','קריית שמונה',
+                      'ראש העין','ראשון לציון','רהט','רחובות','רמלה','רמת גן','רמת השרון',
+                      'שפרעם',
+                      'תל אביב','תל מונד'
+                    ].filter(c => !watchedCities.includes(c)).map(city => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
                 )}
               </div>
             </div>
