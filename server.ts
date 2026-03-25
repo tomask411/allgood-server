@@ -35,18 +35,25 @@ function saveGroup(id: string, name: string, type: string) {
 function loadGroups(): Map<string, any> {
   const rows = db.prepare('SELECT * FROM groups').all() as any[];
   const map = new Map();
+  // Initialize all groups first
   rows.forEach(row => {
-    // Load saved members for this group
-    const memberRows = db.prepare('SELECT * FROM members WHERE group_id = ?').all(row.id) as any[];
-    const members = memberRows.map((m: any) => ({
-      id: m.user_id,
-      name: m.name,
-      status: 'unknown',
-      groupIds: [row.id],
-      groupRoles: { [row.id]: m.role },
-      lastUpdate: m.last_seen * 1000
-    }));
-    map.set(row.id, { id: row.id, name: row.name, type: row.type, members });
+    map.set(row.id, { id: row.id, name: row.name, type: row.type, members: [] });
+  });
+  // Load all members in one query
+  const allMembers = db.prepare('SELECT * FROM members').all() as any[];
+  allMembers.forEach((m: any) => {
+    const group = map.get(m.group_id);
+    if (group) {
+      group.members.push({
+        id: m.user_id,
+        name: m.name,
+        status: 'unknown',
+        socketId: null,
+        groupIds: [m.group_id],
+        groupRoles: { [m.group_id]: m.role },
+        lastUpdate: m.last_seen * 1000
+      });
+    }
   });
   return map;
 }
@@ -338,19 +345,13 @@ async function startServer() {
         if (!groups.has(groupId)) {
           const row = db.prepare('SELECT * FROM groups WHERE id = ?').get(groupId) as any;
           if (row) {
-            // Restore members from DB too
-            const memberRows = db.prepare('SELECT * FROM members WHERE group_id = ?').all(row.id) as any[];
-            const savedMembers = memberRows.map((m: any) => ({
-              id: m.user_id,
-              name: m.name,
-              status: 'unknown',
-              socketId: null,
-              groupIds: [row.id],
-              groupRoles: { [row.id]: m.role },
-              lastUpdate: m.last_seen * 1000
+            const restoredMembers = db.prepare('SELECT * FROM members WHERE group_id = ?').all(row.id) as any[];
+            const savedMembers = restoredMembers.map((m: any) => ({
+              id: m.user_id, name: m.name, status: 'unknown', socketId: null,
+              groupIds: [row.id], groupRoles: { [row.id]: m.role }, lastUpdate: m.last_seen * 1000
             }));
             groups.set(groupId, { id: row.id, name: row.name, type: row.type, members: savedMembers });
-            console.log(`♻️ Restored group from DB: ${groupId} with ${savedMembers.length} members`);
+            console.log(`♻️ Restored group: ${groupId} (${savedMembers.length} members)`);
           }
         }
 
