@@ -745,24 +745,24 @@ export default function App() {
                   exit={{ opacity: 0, x: 20 }}
                   className="space-y-6"
                 >
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-4">
                     <h2 className={cn("text-sm font-semibold uppercase tracking-wider", darkMode ? "text-white/50" : "opacity-50")}>{t.circles}</h2>
-                    <div className="flex gap-2">
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-6">
                       <button 
                         onClick={() => setShowJoinCircle(true)}
-                        className={cn("flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors", darkMode ? "text-white/70 bg-white/10 hover:bg-white/20" : "text-stone-600 bg-stone-100 hover:bg-stone-200")}
+                        className={cn("flex items-center justify-center gap-2 text-sm font-bold px-4 py-3 rounded-2xl transition-colors", darkMode ? "text-white/70 bg-white/10 hover:bg-white/20" : "text-stone-600 bg-stone-100 hover:bg-stone-200")}
                       >
-                        <QrCode className="w-3 h-3" />
+                        <QrCode className="w-4 h-4" />
                         {t.joinCircle}
                       </button>
                       <button 
                         onClick={() => setShowCreateCircle(true)}
-                        className={cn("flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors", darkMode ? "text-emerald-400 bg-emerald-900/30 hover:bg-emerald-900/50" : "text-emerald-600 bg-emerald-50 hover:bg-emerald-100")}
+                        className={cn("flex items-center justify-center gap-2 text-sm font-bold px-4 py-3 rounded-2xl transition-colors", darkMode ? "text-emerald-400 bg-emerald-900/30 hover:bg-emerald-900/50" : "text-emerald-600 bg-emerald-50 hover:bg-emerald-100")}
                       >
-                        <Users className="w-3 h-3" />
+                        <Users className="w-4 h-4" />
                         {t.createCircle}
                       </button>
-                    </div>
                   </div>
 
                   {Object.keys(groups).length === 0 ? (
@@ -1192,7 +1192,7 @@ export default function App() {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative text-black"
+              className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative"
             >
               <button 
                 onClick={() => setShowCreateCircle(false)}
@@ -1263,7 +1263,7 @@ export default function App() {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative text-black"
+              className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative"
             >
               <button 
                 onClick={() => { setShowJoinCircle(false); setJoinError(null); setJoinLoading(false); }}
@@ -1325,7 +1325,7 @@ export default function App() {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative text-black"
+              className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative"
             >
               <button 
                 onClick={() => setInviteGroup(null)}
