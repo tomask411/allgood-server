@@ -232,11 +232,6 @@ async function startServer() {
       console.log(`✅ Group created and saved: ${groupId} (${name})`);
     });
 
-    socket.on('check-group', ({ groupId }: { groupId: string }) => {
-      const exists = groups.has(groupId) || !!db.prepare('SELECT id FROM groups WHERE id = ?').get(groupId);
-      socket.emit('group-check-result', { groupId, exists });
-    });
-
     socket.on('join-group', ({ userId, userName, userPhone, userEmail, groupIds, groupRoles, watchedCities }) => {
       const user = {
         id: userId, name: userName, phone: userPhone, email: userEmail,
@@ -374,7 +369,11 @@ async function startServer() {
         user.groupIds?.forEach((groupId: string) => {
           const group = groups.get(groupId);
           if (group) {
-            group.members = group.members.filter((m: any) => m.id !== user.id);
+            // Mark as offline instead of removing — keeps member visible after refresh
+            const idx = group.members.findIndex((m: any) => m.id === user.id);
+            if (idx !== -1) {
+              group.members[idx] = { ...group.members[idx], status: 'unknown', socketId: null };
+            }
             io.to(groupId).emit('group-update', {
               groupId, name: group.name, type: group.type, members: group.members
             });
