@@ -35,25 +35,18 @@ function saveGroup(id: string, name: string, type: string) {
 function loadGroups(): Map<string, any> {
   const rows = db.prepare('SELECT * FROM groups').all() as any[];
   const map = new Map();
-  // Initialize all groups first
   rows.forEach(row => {
-    map.set(row.id, { id: row.id, name: row.name, type: row.type, members: [] });
-  });
-  // Load all members in one query
-  const allMembers = db.prepare('SELECT * FROM members').all() as any[];
-  allMembers.forEach((m: any) => {
-    const group = map.get(m.group_id);
-    if (group) {
-      group.members.push({
-        id: m.user_id,
-        name: m.name,
-        status: 'unknown',
-        socketId: null,
-        groupIds: [m.group_id],
-        groupRoles: { [m.group_id]: m.role },
-        lastUpdate: m.last_seen * 1000
-      });
-    }
+    // Load saved members for this group
+    const memberRows = db.prepare('SELECT * FROM members WHERE group_id = ?').all(row.id) as any[];
+    const members = memberRows.map((m: any) => ({
+      id: m.user_id,
+      name: m.name,
+      status: 'unknown',
+      groupIds: [row.id],
+      groupRoles: { [row.id]: m.role },
+      lastUpdate: m.last_seen * 1000
+    }));
+    map.set(row.id, { id: row.id, name: row.name, type: row.type, members });
   });
   return map;
 }
@@ -69,81 +62,81 @@ function removeMember(userId: string, groupId: string) {
 
 // ─── City Coordinates ────────────────────────────────────────────────────────
 const CITY_COORDS: Record<string, { lat: number, lng: number }> = {
-  'תל אביב': { lat: 32.0853, lng: 34.7818 },
-  'תל אביב - יפו': { lat: 32.0853, lng: 34.7818 },
-  'ירושלים': { lat: 31.7683, lng: 35.2137 },
-  'חיפה': { lat: 32.7940, lng: 34.9896 },
-  'באר שבע': { lat: 31.2518, lng: 34.7913 },
-  'ראשון לציון': { lat: 31.9730, lng: 34.7925 },
-  'פתח תקווה': { lat: 32.0840, lng: 34.8878 },
-  'אשדוד': { lat: 31.8040, lng: 34.6550 },
-  'נתניה': { lat: 32.3215, lng: 34.8532 },
-  'חולון': { lat: 32.0114, lng: 34.7740 },
-  'בני ברק': { lat: 32.0840, lng: 34.8338 },
-  'בת ים': { lat: 32.0230, lng: 34.7503 },
-  'רמת גן': { lat: 32.0682, lng: 34.8246 },
-  'אשקלון': { lat: 31.6688, lng: 34.5743 },
-  'רחובות': { lat: 31.8928, lng: 34.8113 },
-  'הרצליה': { lat: 32.1663, lng: 34.8434 },
-  'חדרה': { lat: 32.4342, lng: 34.9194 },
-  'מודיעין': { lat: 31.8969, lng: 35.0095 },
-  'כפר סבא': { lat: 32.1753, lng: 34.9066 },
-  'נס ציונה': { lat: 31.9304, lng: 34.7995 },
-  'לוד': { lat: 31.9516, lng: 34.8951 },
-  'רמלה': { lat: 31.9298, lng: 34.8710 },
-  'נהריה': { lat: 33.0074, lng: 35.0972 },
-  'עכו': { lat: 32.9233, lng: 35.0765 },
-  'צפת': { lat: 32.9646, lng: 35.4960 },
-  'טבריה': { lat: 32.7940, lng: 35.5300 },
-  'נצרת': { lat: 32.6996, lng: 35.3035 },
-  'אילת': { lat: 29.5581, lng: 34.9482 },
-  'דימונה': { lat: 31.0685, lng: 35.0326 },
-  'קריית שמונה': { lat: 33.2074, lng: 35.5706 },
-  'קריית גת': { lat: 31.6100, lng: 34.7642 },
-  'קריית אתא': { lat: 32.8129, lng: 35.1090 },
-  'קריית ביאליק': { lat: 32.8337, lng: 35.0869 },
-  'קריית מוצקין': { lat: 32.8367, lng: 35.0778 },
-  'קריית אונו': { lat: 32.0598, lng: 34.8556 },
-  'אור יהודה': { lat: 32.0293, lng: 34.8556 },
-  'גבעתיים': { lat: 32.0710, lng: 34.8127 },
-  'רמת השרון': { lat: 32.1469, lng: 34.8397 },
-  'הוד השרון': { lat: 32.1512, lng: 34.8969 },
-  'כפר יונה': { lat: 32.3148, lng: 34.9369 },
-  'עפולה': { lat: 32.6079, lng: 35.2897 },
-  'גדרה': { lat: 31.8116, lng: 34.7766 },
-  'יבנה': { lat: 31.8782, lng: 34.7412 },
-  'נתיבות': { lat: 31.4233, lng: 34.5887 },
-  'שדרות': { lat: 31.5236, lng: 34.5965 },
-  'אופקים': { lat: 31.3115, lng: 34.6209 },
-  'ערד': { lat: 31.2583, lng: 35.2127 },
-  'מגדל העמק': { lat: 32.6754, lng: 35.2384 },
-  'יוקנעם': { lat: 32.6566, lng: 35.1166 },
-  'כרמיאל': { lat: 32.9149, lng: 35.2966 },
-  'טירת כרמל': { lat: 32.7594, lng: 34.9696 },
-  'אריאל': { lat: 32.1030, lng: 35.1671 },
-  'מעלה אדומים': { lat: 31.7731, lng: 35.2980 },
-  'בית שמש': { lat: 31.7480, lng: 34.9873 },
-  'בית שאן': { lat: 32.4988, lng: 35.4993 },
-  'זכרון יעקב': { lat: 32.5702, lng: 34.9480 },
-  'פרדס חנה': { lat: 32.4739, lng: 34.9696 },
-  'גן יבנה': { lat: 31.7902, lng: 34.7076 },
-  'יהוד': { lat: 32.0309, lng: 34.8878 },
-  'אלעד': { lat: 32.0509, lng: 34.9516 },
-  'ראש העין': { lat: 32.0956, lng: 34.9573 },
-  'אבן יהודה': { lat: 32.2730, lng: 34.8879 },
-  'בקה אל גרביה': { lat: 32.4197, lng: 35.0374 },
-  'טייבה': { lat: 32.2688, lng: 35.0050 },
-  'טירה': { lat: 32.2336, lng: 34.9520 },
-  'כפר קאסם': { lat: 32.1149, lng: 34.9770 },
-  'רהט': { lat: 31.3929, lng: 34.7540 },
-  'שפרעם': { lat: 32.8060, lng: 35.1700 },
-  'נצרת עילית': { lat: 32.7056, lng: 35.3321 },
-  'סח'נין': { lat: 32.8589, lng: 35.3009 },
-  'אום אל פחם': { lat: 32.5194, lng: 35.1524 },
-  'ג'לג'וליה': { lat: 32.1565, lng: 34.9579 },
-  'גבעת שמואל': { lat: 32.0784, lng: 34.8487 },
-  'אור עקיבא': { lat: 32.5055, lng: 34.9188 },
-  'קלנסווה': { lat: 32.2836, lng: 34.9826 },
+  "תל אביב": { lat: 32.0853, lng: 34.7818 },
+  "תל אביב - יפו": { lat: 32.0853, lng: 34.7818 },
+  "ירושלים": { lat: 31.7683, lng: 35.2137 },
+  "חיפה": { lat: 32.7940, lng: 34.9896 },
+  "באר שבע": { lat: 31.2518, lng: 34.7913 },
+  "ראשון לציון": { lat: 31.9730, lng: 34.7925 },
+  "פתח תקווה": { lat: 32.0840, lng: 34.8878 },
+  "אשדוד": { lat: 31.8040, lng: 34.6550 },
+  "נתניה": { lat: 32.3215, lng: 34.8532 },
+  "חולון": { lat: 32.0114, lng: 34.7740 },
+  "בני ברק": { lat: 32.0840, lng: 34.8338 },
+  "בת ים": { lat: 32.0230, lng: 34.7503 },
+  "רמת גן": { lat: 32.0682, lng: 34.8246 },
+  "אשקלון": { lat: 31.6688, lng: 34.5743 },
+  "רחובות": { lat: 31.8928, lng: 34.8113 },
+  "הרצליה": { lat: 32.1663, lng: 34.8434 },
+  "חדרה": { lat: 32.4342, lng: 34.9194 },
+  "מודיעין": { lat: 31.8969, lng: 35.0095 },
+  "כפר סבא": { lat: 32.1753, lng: 34.9066 },
+  "נס ציונה": { lat: 31.9304, lng: 34.7995 },
+  "לוד": { lat: 31.9516, lng: 34.8951 },
+  "רמלה": { lat: 31.9298, lng: 34.8710 },
+  "נהריה": { lat: 33.0074, lng: 35.0972 },
+  "עכו": { lat: 32.9233, lng: 35.0765 },
+  "צפת": { lat: 32.9646, lng: 35.4960 },
+  "טבריה": { lat: 32.7940, lng: 35.5300 },
+  "נצרת": { lat: 32.6996, lng: 35.3035 },
+  "אילת": { lat: 29.5581, lng: 34.9482 },
+  "דימונה": { lat: 31.0685, lng: 35.0326 },
+  "קריית שמונה": { lat: 33.2074, lng: 35.5706 },
+  "קריית גת": { lat: 31.6100, lng: 34.7642 },
+  "קריית אתא": { lat: 32.8129, lng: 35.1090 },
+  "קריית ביאליק": { lat: 32.8337, lng: 35.0869 },
+  "קריית מוצקין": { lat: 32.8367, lng: 35.0778 },
+  "קריית אונו": { lat: 32.0598, lng: 34.8556 },
+  "אור יהודה": { lat: 32.0293, lng: 34.8556 },
+  "גבעתיים": { lat: 32.0710, lng: 34.8127 },
+  "רמת השרון": { lat: 32.1469, lng: 34.8397 },
+  "הוד השרון": { lat: 32.1512, lng: 34.8969 },
+  "כפר יונה": { lat: 32.3148, lng: 34.9369 },
+  "עפולה": { lat: 32.6079, lng: 35.2897 },
+  "גדרה": { lat: 31.8116, lng: 34.7766 },
+  "יבנה": { lat: 31.8782, lng: 34.7412 },
+  "נתיבות": { lat: 31.4233, lng: 34.5887 },
+  "שדרות": { lat: 31.5236, lng: 34.5965 },
+  "אופקים": { lat: 31.3115, lng: 34.6209 },
+  "ערד": { lat: 31.2583, lng: 35.2127 },
+  "מגדל העמק": { lat: 32.6754, lng: 35.2384 },
+  "יוקנעם": { lat: 32.6566, lng: 35.1166 },
+  "כרמיאל": { lat: 32.9149, lng: 35.2966 },
+  "טירת כרמל": { lat: 32.7594, lng: 34.9696 },
+  "אריאל": { lat: 32.1030, lng: 35.1671 },
+  "מעלה אדומים": { lat: 31.7731, lng: 35.2980 },
+  "בית שמש": { lat: 31.7480, lng: 34.9873 },
+  "בית שאן": { lat: 32.4988, lng: 35.4993 },
+  "זכרון יעקב": { lat: 32.5702, lng: 34.9480 },
+  "פרדס חנה": { lat: 32.4739, lng: 34.9696 },
+  "גן יבנה": { lat: 31.7902, lng: 34.7076 },
+  "יהוד": { lat: 32.0309, lng: 34.8878 },
+  "אלעד": { lat: 32.0509, lng: 34.9516 },
+  "ראש העין": { lat: 32.0956, lng: 34.9573 },
+  "אבן יהודה": { lat: 32.2730, lng: 34.8879 },
+  "בקה אל גרביה": { lat: 32.4197, lng: 35.0374 },
+  "טייבה": { lat: 32.2688, lng: 35.0050 },
+  "טירה": { lat: 32.2336, lng: 34.9520 },
+  "כפר קאסם": { lat: 32.1149, lng: 34.9770 },
+  "רהט": { lat: 31.3929, lng: 34.7540 },
+  "שפרעם": { lat: 32.8060, lng: 35.1700 },
+  "נצרת עילית": { lat: 32.7056, lng: 35.3321 },
+  "סח'נין": { lat: 32.8589, lng: 35.3009 },
+  "אום אל פחם": { lat: 32.5194, lng: 35.1524 },
+  "ג'לג'וליה": { lat: 32.1565, lng: 34.9579 },
+  "גבעת שמואל": { lat: 32.0784, lng: 34.8487 },
+  "אור עקיבא": { lat: 32.5055, lng: 34.9188 },
+  "קלנסווה": { lat: 32.2836, lng: 34.9826 },
 };
 
 function getCityCoords(cities: string[]): { lat: number, lng: number } {
@@ -345,13 +338,8 @@ async function startServer() {
         if (!groups.has(groupId)) {
           const row = db.prepare('SELECT * FROM groups WHERE id = ?').get(groupId) as any;
           if (row) {
-            const restoredMembers = db.prepare('SELECT * FROM members WHERE group_id = ?').all(row.id) as any[];
-            const savedMembers = restoredMembers.map((m: any) => ({
-              id: m.user_id, name: m.name, status: 'unknown', socketId: null,
-              groupIds: [row.id], groupRoles: { [row.id]: m.role }, lastUpdate: m.last_seen * 1000
-            }));
-            groups.set(groupId, { id: row.id, name: row.name, type: row.type, members: savedMembers });
-            console.log(`♻️ Restored group: ${groupId} (${savedMembers.length} members)`);
+            groups.set(groupId, { id: row.id, name: row.name, type: row.type, members: [] });
+            console.log(`♻️ Restored group from DB: ${groupId}`);
           }
         }
 
