@@ -1006,6 +1006,7 @@ export default function App() {
                                 </div>
                                 <div>
                                   <div className="flex items-center gap-2">
+                                    <div className={cn("w-2 h-2 rounded-full flex-shrink-0", member.socketId ? "bg-emerald-500" : "bg-stone-300")} />
                                     <h4 className="font-bold">{member.name}</h4>
                                     {member.id === MY_USER_ID && <span className={cn("text-[8px] font-black px-1.5 py-0.5 rounded uppercase", darkMode ? "bg-stone-700 text-white/40" : "bg-stone-100 opacity-40")}>You</span>}
                                   </div>
