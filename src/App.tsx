@@ -113,6 +113,7 @@ export default function App() {
     return stored ? JSON.parse(stored) : [];
   });
   const [myCity, setMyCity] = useState<string>('');
+  const watchedCitiesRef = useRef<string[]>(watchedCities);
   const [showLocationSettings, setShowLocationSettings] = useState(false);
   const [manualCityInput, setManualCityInput] = useState('');
   const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem('allgood_dark') === 'true');
@@ -205,6 +206,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    watchedCitiesRef.current = watchedCities;
     localStorage.setItem('allgood_watched_cities', JSON.stringify(watchedCities));
   }, [watchedCities]);
 
@@ -259,9 +261,10 @@ export default function App() {
     });
 
     newSocket.on('new-alert', async (alert: Alert) => {
-      if (watchedCities.length > 0 && alert.cities) {
+      const currentCities = watchedCitiesRef.current;
+      if (currentCities.length > 0 && alert.cities) {
         const isRelevant = alert.cities.some(city => 
-          watchedCities.some(w => city.includes(w) || w.includes(city))
+          currentCities.some(w => city.includes(w) || w.includes(city))
         );
         if (!isRelevant) return;
       }
