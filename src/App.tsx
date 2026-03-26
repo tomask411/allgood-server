@@ -148,13 +148,11 @@ export default function App() {
   }, [groupRoles]);
 
   useEffect(() => {
-    // Save group names/types to localStorage (members are live from server)
-    const toSave: Record<string, { name: string, type: string, members: User[] }> = {};
-    Object.entries(groups).forEach(([id, g]) => {
-      toSave[id] = { name: g.name, type: g.type, members: [] };
-    });
-    if (Object.keys(toSave).length > 0) {
-      localStorage.setItem('allgood_groups', JSON.stringify(toSave));
+    if (Object.keys(groups).length > 0) {
+      const hasMembers = Object.values(groups).some(g => g.members.length > 0);
+      if (hasMembers) {
+        localStorage.setItem('allgood_groups', JSON.stringify(groups));
+      }
     }
   }, [groups]);
 
@@ -231,10 +229,13 @@ export default function App() {
     });
 
     newSocket.on('group-update', ({ groupId, name, type, members }: { groupId: string, name: string, type: string, members: User[] }) => {
-      setGroups(prev => ({ 
-        ...prev, 
-        [groupId]: { name, type, members } 
-      }));
+      setGroups(prev => {
+        const existing = prev[groupId];
+        const onlineIds = new Set(members.map((m: User) => m.id));
+        const offlineMembers = (existing?.members || []).filter((m: User) => !onlineIds.has(m.id));
+        const finalMembers = members.length > 0 ? [...members, ...offlineMembers] : (existing?.members || []);
+        return { ...prev, [groupId]: { name, type, members: finalMembers } };
+      });
     });
 
     newSocket.on('group-created', ({ id, name, type }: { id: string, name: string, type: 'family' | 'work' | 'friends' }) => {
