@@ -202,6 +202,8 @@ export default function App() {
           });
         }
       } catch {}
+    }, (err) => {
+      console.log('GPS denied or unavailable:', err.message);
     });
   }, []);
 
