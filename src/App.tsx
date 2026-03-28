@@ -119,10 +119,35 @@ export default function App() {
   const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem('allgood_dark') === 'true');
   const [pushEnabled, setPushEnabled] = useState<boolean>(false);
   const [pushLoading, setPushLoading] = useState<boolean>(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState<boolean>(false);
 
   useEffect(() => {
     localStorage.setItem('allgood_dark', String(darkMode));
   }, [darkMode]);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      // Show banner only if not already installed
+      if (!window.matchMedia('(display-mode: standalone)').matches) {
+        setShowInstallBanner(true);
+      }
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallBanner(false);
+      setInstallPrompt(null);
+    }
+  };
 
   const t = translations[lang];
   const isRTL = lang === 'he' || lang === 'ar';
@@ -790,6 +815,40 @@ export default function App() {
               >
                 Dismiss
               </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Install Banner - Android */}
+        <AnimatePresence>
+          {showInstallBanner && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className={cn("mb-4 p-4 rounded-2xl flex items-center justify-between gap-3", darkMode ? "bg-stone-800 border border-white/10" : "bg-emerald-50 border border-emerald-100")}
+            >
+              <div className="flex items-center gap-3">
+                <img src="/icon-192.png" className="w-10 h-10 rounded-xl" />
+                <div>
+                  <p className="text-sm font-bold">התקן את AllGood</p>
+                  <p className={cn("text-xs", darkMode ? "text-white/50" : "text-emerald-700 opacity-70")}>גישה מהירה מהמסך הבית</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleInstall}
+                  className="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-xl"
+                >
+                  התקן
+                </button>
+                <button
+                  onClick={() => setShowInstallBanner(false)}
+                  className="p-1 opacity-40 hover:opacity-100"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
