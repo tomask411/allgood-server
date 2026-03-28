@@ -36,17 +36,19 @@ function loadGroups(): Map<string, any> {
   const rows = db.prepare('SELECT * FROM groups').all() as any[];
   const map = new Map();
   rows.forEach(row => {
-    // Load saved members for this group
-    const memberRows = db.prepare('SELECT * FROM members WHERE group_id = ?').all(row.id) as any[];
-    const members = memberRows.map((m: any) => ({
-      id: m.user_id,
-      name: m.name,
-      status: 'unknown',
-      groupIds: [row.id],
-      groupRoles: { [row.id]: m.role },
-      lastUpdate: m.last_seen * 1000
-    }));
-    map.set(row.id, { id: row.id, name: row.name, type: row.type, members });
+    map.set(row.id, { id: row.id, name: row.name, type: row.type, members: [] });
+  });
+  // Single query for all members
+  const allMembers = db.prepare('SELECT * FROM members').all() as any[];
+  allMembers.forEach((m: any) => {
+    const group = map.get(m.group_id);
+    if (group) {
+      group.members.push({
+        id: m.user_id, name: m.name, status: 'unknown', socketId: null,
+        groupIds: [m.group_id], groupRoles: { [m.group_id]: m.role },
+        lastUpdate: m.last_seen * 1000
+      });
+    }
   });
   return map;
 }
@@ -138,7 +140,7 @@ const CITY_COORDS: Record<string, { lat: number, lng: number }> = {
   "אור עקיבא": { lat: 32.5055, lng: 34.9188 },
   // ישובים נוספים
   "מזכרת בתיה": { lat: 31.8577, lng: 34.8455 },
-  "גן יבנה": { lat: 31.7902, lng: 34.7076 },
+  // duplicate removed: גן יבנה
   "קיסריה": { lat: 32.5000, lng: 34.9000 },
   "בנימינה": { lat: 32.5183, lng: 34.9458 },
   "פרדסיה": { lat: 32.2833, lng: 34.8833 },
@@ -174,7 +176,7 @@ const CITY_COORDS: Record<string, { lat: number, lng: number }> = {
   "אעבלין": { lat: 32.8167, lng: 35.2000 },
   "ג'ת": { lat: 32.4000, lng: 35.0833 },
   "ערערה": { lat: 32.5000, lng: 35.1000 },
-  "ג'לג'וליה": { lat: 32.1565, lng: 34.9579 },
+  // duplicate removed: ג'לג'וליה
   "קלנסווה": { lat: 32.2836, lng: 34.9826 },
   "כפר ברא": { lat: 32.1167, lng: 34.9833 },
   "ג'סר א-זרקא": { lat: 32.5333, lng: 34.9167 },
@@ -197,7 +199,7 @@ const CITY_COORDS: Record<string, { lat: number, lng: number }> = {
   "הר חומה": { lat: 31.7167, lng: 35.2167 },
   "גוש עציון": { lat: 31.6667, lng: 35.1333 },
   "אפרת": { lat: 31.6596, lng: 35.1540 },
-  "בית שמש": { lat: 31.7480, lng: 34.9873 },
+  // duplicate removed: בית שמש
   "זנוח": { lat: 31.7500, lng: 34.9833 },
   "שריגים": { lat: 31.7833, lng: 34.9667 },
   "צרעה": { lat: 31.7833, lng: 34.9833 },
@@ -206,7 +208,7 @@ const CITY_COORDS: Record<string, { lat: number, lng: number }> = {
   "מבשרת ציון": { lat: 31.8015, lng: 35.1537 },
   "גבעון החדשה": { lat: 31.8500, lng: 35.1333 },
   "ניר עם": { lat: 31.5500, lng: 34.6167 },
-  "אופקים": { lat: 31.3115, lng: 34.6209 },
+  // duplicate removed: אופקים
   "תפרח": { lat: 31.3667, lng: 34.7500 },
   "בני שמעון": { lat: 31.2833, lng: 34.7500 },
   "להבים": { lat: 31.3667, lng: 34.8167 },
@@ -214,7 +216,7 @@ const CITY_COORDS: Record<string, { lat: number, lng: number }> = {
   "מיתר": { lat: 31.3167, lng: 34.9500 },
   "כסייפה": { lat: 31.2167, lng: 34.9667 },
   "גבעות בר": { lat: 31.2333, lng: 34.8167 },
-  "דימונה": { lat: 31.0685, lng: 35.0326 },
+  // duplicate removed: דימונה
   "משאבי שדה": { lat: 30.8833, lng: 34.8333 },
   "שדה בוקר": { lat: 30.8716, lng: 34.7885 },
   "אליאב": { lat: 30.8333, lng: 34.7833 },
@@ -389,7 +391,7 @@ async function startServer() {
                   }
                 }
               }
-              io.to(groupId).emit('group-update', { groupId, members: group.members });
+              io.to(groupId).emit('group-update', { groupId, name: group.name, type: group.type, members: group.members });
             }
           });
         }
@@ -401,6 +403,11 @@ async function startServer() {
   // ─── Socket Events ────────────────────────────────────────────────────────
   io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
+
+    socket.on('check-group', ({ groupId }: { groupId: string }) => {
+      const exists = groups.has(groupId) || !!db.prepare('SELECT id FROM groups WHERE id = ?').get(groupId);
+      socket.emit('group-check-result', { groupId, exists });
+    });
 
     socket.on('create-group', ({ name, type }) => {
       const groupId = `${type}-${Math.random().toString(36).substr(2, 4)}`;
