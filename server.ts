@@ -1,4 +1,5 @@
 import express from 'express';
+import webpush from 'web-push';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { createServer as createViteServer } from 'vite';
@@ -25,6 +26,12 @@ db.exec(`
     role TEXT DEFAULT 'member',
     last_seen INTEGER DEFAULT (strftime('%s','now')),
     PRIMARY KEY (user_id, group_id)
+  );
+  CREATE TABLE IF NOT EXISTS push_subscriptions (
+    user_id TEXT PRIMARY KEY,
+    subscription TEXT NOT NULL,
+    watched_cities TEXT DEFAULT '[]',
+    created_at INTEGER DEFAULT (strftime('%s','now'))
   );
 `);
 
@@ -59,6 +66,14 @@ function saveMember(userId: string, groupId: string, name: string, role: string)
 
 function removeMember(userId: string, groupId: string) {
   db.prepare('DELETE FROM members WHERE user_id = ? AND group_id = ?').run(userId, groupId);
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─── Web Push Setup ──────────────────────────────────────────────────────────
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails('mailto:admin@allgood.app', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -426,17 +441,50 @@ async function startServer() {
         user.escalationFired = false;
       });
 
-      // Send alert only to users whose watchedCities match, or those with no filter
-      users.forEach((user, socketId) => {
-        if (!user.watchedCities?.length) {
-          io.to(socketId).emit('new-alert', newAlert);
-        } else {
-          const isRelevant = newAlert.cities.some((city: string) =>
-            user.watchedCities.some((w: string) =>
-              city.includes(w) || w.includes(city)
-            )
+      // Send push notifications to offline users
+      if (VAPID_PUBLIC_KEY) {
+        const allSubs = db.prepare('SELECT * FROM push_subscriptions').all() as any[];
+        allSubs.forEach((row: any) => {
+          const watchedCities = JSON.parse(row.watched_cities || '[]');
+          const isRelevant = !watchedCities.length || newAlert.cities.some((city: string) =>
+            watchedCities.some((w: string) => city.includes(w) || w.includes(city))
           );
-          if (isRelevant) io.to(socketId).emit('new-alert', newAlert);
+          if (isRelevant) {
+            const sub = JSON.parse(row.subscription);
+            webpush.sendNotification(sub, JSON.stringify({
+              title: `🚨 ${newAlert.title} - AllGood`,
+              body: `אזעקה ב: ${newAlert.area}`,
+              url: '/'
+            })).catch(() => {
+              db.prepare('DELETE FROM push_subscriptions WHERE user_id = ?').run(row.user_id);
+            });
+          }
+        });
+      }
+
+      // Send alert only to online users whose watchedCities match
+      users.forEach((user, socketId) => {
+        const isRelevant = !user.watchedCities?.length || newAlert.cities.some((city: string) =>
+          user.watchedCities.some((w: string) =>
+            city.includes(w) || w.includes(city)
+          )
+        );
+        if (isRelevant) {
+          user.status = 'pending';
+          user.alertStartTime = Date.now();
+          user.voicePromptFired = false;
+          user.escalationFired = false;
+          io.to(socketId).emit('new-alert', newAlert);
+          user.groupIds?.forEach((groupId: string) => {
+            const group = groups.get(groupId);
+            if (group) {
+              const idx = group.members.findIndex((m: any) => m.id === user.id);
+              if (idx !== -1) group.members[idx] = { ...group.members[idx], status: 'pending' };
+              io.to(groupId).emit('group-update', {
+                groupId, name: group.name, type: group.type, members: group.members
+              });
+            }
+          });
         }
       });
       io.emit('all-alerts', alerts);
@@ -677,6 +725,26 @@ async function startServer() {
   // ─────────────────────────────────────────────────────────────────────────
 
   // ─── API Routes ───────────────────────────────────────────────────────────
+  // ─── Push Subscription Routes ───────────────────────────────────────────────
+  app.post('/api/push/subscribe', (req, res) => {
+    const { userId, subscription, watchedCities } = req.body;
+    if (!userId || !subscription) return res.status(400).json({ error: 'Missing data' });
+    db.prepare('INSERT OR REPLACE INTO push_subscriptions (user_id, subscription, watched_cities) VALUES (?, ?, ?)')
+      .run(userId, JSON.stringify(subscription), JSON.stringify(watchedCities || []));
+    res.json({ ok: true });
+  });
+
+  app.delete('/api/push/subscribe', (req, res) => {
+    const { userId } = req.body;
+    if (userId) db.prepare('DELETE FROM push_subscriptions WHERE user_id = ?').run(userId);
+    res.json({ ok: true });
+  });
+
+  app.get('/api/push/vapid-key', (_, res) => {
+    res.json({ publicKey: VAPID_PUBLIC_KEY });
+  });
+  // ─────────────────────────────────────────────────────────────────────────────
+
   app.get('/api/health', (_, res) => {
     res.json({ status: 'ok', alertsCount: alerts.length, groupsCount: groups.size });
   });
