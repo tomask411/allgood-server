@@ -72,8 +72,15 @@ function removeMember(userId: string, groupId: string) {
 // ─── Web Push Setup ──────────────────────────────────────────────────────────
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
+let vapidEnabled = false;
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails('mailto:admin@allgood.app', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  try {
+    webpush.setVapidDetails('mailto:admin@allgood.app', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+    vapidEnabled = true;
+    console.log('✅ Push notifications enabled');
+  } catch (err) {
+    console.error('⚠️ VAPID setup failed — push notifications disabled:', err);
+  }
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -442,7 +449,7 @@ async function startServer() {
       });
 
       // Send push notifications to offline users
-      if (VAPID_PUBLIC_KEY) {
+      if (vapidEnabled) {
         const allSubs = db.prepare('SELECT * FROM push_subscriptions').all() as any[];
         allSubs.forEach((row: any) => {
           const watchedCities = JSON.parse(row.watched_cities || '[]');
