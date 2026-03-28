@@ -324,6 +324,47 @@ export default function App() {
     };
   }, []);
 
+  // ─── Push Notifications Setup ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+    const setupPush = async () => {
+      try {
+        const reg = await navigator.serviceWorker.register('/sw.js');
+        const keyRes = await fetch('/api/push/vapid-key');
+        const { publicKey } = await keyRes.json();
+        if (!publicKey) return;
+
+        const existing = await reg.pushManager.getSubscription();
+        if (existing) return; // already subscribed
+
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: publicKey
+        });
+
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: MY_USER_ID,
+            subscription: sub,
+            watchedCities: JSON.parse(localStorage.getItem('allgood_watched_cities') || '[]')
+          })
+        });
+        console.log('✅ Push notifications enabled');
+      } catch (err) {
+        console.error('Push setup error:', err);
+      }
+    };
+
+    setupPush();
+  }, []);
+  // ─────────────────────────────────────────────────────────────────────────────
+
   const handleIAmOkay = () => {
     setMyStatus('safe');
     setCurrentAlert(null);
