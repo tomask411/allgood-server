@@ -117,6 +117,8 @@ export default function App() {
   const [showLocationSettings, setShowLocationSettings] = useState(false);
   const [manualCityInput, setManualCityInput] = useState('');
   const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem('allgood_dark') === 'true');
+  const [pushEnabled, setPushEnabled] = useState<boolean>(false);
+  const [pushLoading, setPushLoading] = useState<boolean>(false);
 
   useEffect(() => {
     localStorage.setItem('allgood_dark', String(darkMode));
@@ -364,6 +366,53 @@ export default function App() {
     setupPush();
   }, []);
   // ─────────────────────────────────────────────────────────────────────────────
+
+  const enablePush = async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      alert('Push notifications are not supported on this device/browser.');
+      return;
+    }
+    setPushLoading(true);
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      const keyRes = await fetch('/api/push/vapid-key');
+      const { publicKey } = await keyRes.json();
+      if (!publicKey) throw new Error('No VAPID key');
+
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        alert('יש לאשר התראות בהגדרות הדפדפן');
+        setPushLoading(false);
+        return;
+      }
+
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: publicKey
+        });
+      }
+
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: MY_USER_ID,
+          subscription: sub,
+          watchedCities: watchedCities
+        })
+      });
+      setPushEnabled(true);
+      localStorage.setItem('allgood_push', 'true');
+      alert('✅ התראות הופעלו בהצלחה!');
+    } catch (err) {
+      console.error('Push error:', err);
+      alert('שגיאה בהפעלת התראות');
+    }
+    setPushLoading(false);
+  };
 
   const handleIAmOkay = () => {
     setMyStatus('safe');
@@ -689,6 +738,24 @@ export default function App() {
                       <option key={city} value={city}>{city}</option>
                     ))}
                   </select>
+                )}
+              </div>
+              <div className="pt-2">
+                <h3 className={cn("text-[10px] font-bold uppercase tracking-widest mb-2", darkMode ? "text-white/60" : "opacity-40")}>התראות</h3>
+                {pushEnabled || localStorage.getItem('allgood_push') === 'true' ? (
+                  <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                    התראות פעילות ✅
+                  </div>
+                ) : (
+                  <button
+                    onClick={enablePush}
+                    disabled={pushLoading}
+                    className="w-full bg-emerald-600 text-white text-xs font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {pushLoading ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : '🔔'}
+                    הפעל התראות כשהאפליקציה סגורה
+                  </button>
                 )}
               </div>
             </div>
