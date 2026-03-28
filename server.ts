@@ -226,6 +226,104 @@ const CITY_COORDS: Record<string, { lat: number, lng: number }> = {
   "פארן": { lat: 30.3167, lng: 35.2167 },
   "שיזף": { lat: 30.0667, lng: 35.0667 },
   "ספיר": { lat: 29.8000, lng: 35.1167 },
+  // אזורים נוספים
+  "מטולה": { lat: 33.2725, lng: 35.5706 },
+  "כפר גלעדי": { lat: 33.2333, lng: 35.5667 },
+  "מג'דל שמס": { lat: 33.2692, lng: 35.7692 },
+  "בוקעתא": { lat: 33.2167, lng: 35.75 },
+  "מסעדה": { lat: 33.2333, lng: 35.7833 },
+  "כצרין": { lat: 32.9944, lng: 35.6914 },
+  "חד נס": { lat: 32.75, lng: 35.6167 },
+  "ראש פינה": { lat: 32.9731, lng: 35.5456 },
+  "מחניים": { lat: 33.0, lng: 35.5667 },
+  "יסוד המעלה": { lat: 33.05, lng: 35.5833 },
+  "כפר כנא": { lat: 32.75, lng: 35.3333 },
+  "ריינה": { lat: 32.7167, lng: 35.3 },
+  "תורעאן": { lat: 32.8, lng: 35.3167 },
+  "עוספיה": { lat: 32.7333, lng: 35.0833 },
+  "ירכא": { lat: 32.95, lng: 35.2 },
+  "כפר יאסיף": { lat: 32.95, lng: 35.15 },
+  "אבו סנאן": { lat: 32.9667, lng: 35.1333 },
+  "בענה": { lat: 32.9667, lng: 35.2667 },
+  "חורפיש": { lat: 33.0, lng: 35.3 },
+  "עכברא": { lat: 33.0, lng: 35.5 },
+  "מירון": { lat: 32.9833, lng: 35.4333 },
+  "אכסאל": { lat: 32.6833, lng: 35.3 },
+  "דבוריה": { lat: 32.6833, lng: 35.3667 },
+  "נחף": { lat: 32.9, lng: 35.3333 },
+  "אלפי מנשה": { lat: 32.16, lng: 35.03 },
+  "ברקן": { lat: 32.1, lng: 35.0667 },
+  "קרני שומרון": { lat: 32.1667, lng: 35.0333 },
+  "אלקנה": { lat: 32.1167, lng: 35.0167 },
+  "שערי תקווה": { lat: 32.1333, lng: 35.0167 },
+  "אביחיל": { lat: 32.35, lng: 34.8833 },
+  "כפר ויתקין": { lat: 32.3833, lng: 34.8833 },
+  "קדימה צורן": { lat: 32.2833, lng: 34.9167 },
+  "נורדיה": { lat: 32.2667, lng: 34.8833 },
+  "גבעות עדן": { lat: 32.1, lng: 34.9667 },
+  "מזור": { lat: 32.0667, lng: 34.9667 },
+  "מעלה אפרים": { lat: 32.0167, lng: 35.3667 },
+  "עין גדי": { lat: 31.4667, lng: 35.3833 },
+  "מצדה": { lat: 31.3167, lng: 35.35 },
+  "נווה זוהר": { lat: 31.1167, lng: 35.3833 },
+  "לקיה": { lat: 31.3667, lng: 34.8167 },
+  "ערוער": { lat: 31.25, lng: 34.8167 },
+  "ניצנה": { lat: 30.8833, lng: 34.4833 },
+  "רביבים": { lat: 30.9667, lng: 34.7167 },
+  "צאלים": { lat: 31.1333, lng: 34.65 },
+  "אילות": { lat: 29.5667, lng: 34.95 },
+  "בלפוריה": { lat: 32.6167, lng: 35.3167 },
+  "גינוסר": { lat: 32.85, lng: 35.5167 },
+  "צמח": { lat: 32.7167, lng: 35.5833 },
+  "דגניה": { lat: 32.7, lng: 35.5667 },
+  "אפיקים": { lat: 32.6833, lng: 35.6 },
+  "מנחמיה": { lat: 32.6667, lng: 35.5667 },
+  "גשר": { lat: 32.6333, lng: 35.5667 },
+  "עין דור": { lat: 32.6333, lng: 35.3833 },
+  "נהלל": { lat: 32.6833, lng: 35.2 },
+  "כפר יהושע": { lat: 32.65, lng: 35.2 },
+  "בית לחם הגלילית": { lat: 32.7167, lng: 35.2 },
+  "קריית חיים": { lat: 32.8333, lng: 35.0667 },
+  "גבעת אליה": { lat: 32.7667, lng: 35.0167 },
+  "כפר מנחם": { lat: 31.75, lng: 34.85 },
+  "גן שורק": { lat: 31.8, lng: 34.8 },
+  "בית שקמה": { lat: 31.6167, lng: 34.6167 },
+  "מנרה": { lat: 33.25, lng: 35.55 },
+  "דן": { lat: 33.25, lng: 35.65 },
+  "גונן": { lat: 33.1167, lng: 35.6167 },
+  "אל רום": { lat: 33.1, lng: 35.7667 },
+  "נווה אטיב": { lat: 33.0333, lng: 35.6833 },
+  "אלוני הבשן": { lat: 33.0167, lng: 35.7167 },
+  "יונתן": { lat: 32.9833, lng: 35.7667 },
+  "אורטל": { lat: 32.9667, lng: 35.8 },
+  "שניר": { lat: 33.2333, lng: 35.6333 },
+  "ג'ולס": { lat: 32.9167, lng: 35.1667 },
+  "פסוטה": { lat: 33.0333, lng: 35.2667 },
+  "ג'דיידה מכר": { lat: 32.95, lng: 35.1667 },
+  "כפר נהר": { lat: 32.8667, lng: 35.5167 },
+  "עמיעד": { lat: 32.9333, lng: 35.5333 },
+  "ביריה": { lat: 32.9833, lng: 35.5 },
+  "הר כנען": { lat: 32.9833, lng: 35.5167 },
+  "עין זיתים": { lat: 32.9667, lng: 35.4833 },
+  "עספיא": { lat: 32.7333, lng: 35.0833 },
+  "מכמורת": { lat: 32.4, lng: 34.8833 },
+  "גבעת חיים": { lat: 32.4167, lng: 34.9167 },
+  "עין ורד": { lat: 32.3333, lng: 34.9167 },
+  "שדה ורבורג": { lat: 32.35, lng: 34.9167 },
+  "נוף איילון": { lat: 31.9, lng: 34.9333 },
+  "בית עריף": { lat: 31.9667, lng: 34.9667 },
+  "מצפה יריחו": { lat: 31.8167, lng: 35.3833 },
+  "עלי": { lat: 32.05, lng: 35.2667 },
+  "שילה": { lat: 32.05, lng: 35.3 },
+  "עופרה": { lat: 31.9667, lng: 35.25 },
+  "בית אל": { lat: 31.9333, lng: 35.2167 },
+  "פסגות": { lat: 31.9167, lng: 35.25 },
+  "גבעון": { lat: 31.85, lng: 35.15 },
+  "נבטים": { lat: 31.1, lng: 34.8333 },
+  "הר הנגב": { lat: 30.8, lng: 34.75 },
+  "גבת": { lat: 32.6833, lng: 35.25 },
+  "כפר יחזקאל": { lat: 32.5833, lng: 35.35 },
+  "בית ירח": { lat: 32.7167, lng: 35.55 },
 };
 
 function getCityCoords(cities: string[]): { lat: number, lng: number } {
@@ -320,30 +418,24 @@ async function startServer() {
       alerts.push(newAlert);
       if (alerts.length > 100) alerts.shift();
 
-      // Send alert only to relevant users + update their status
+      users.forEach((user) => {
+        user.status = 'pending';
+        user.alertStartTime = Date.now();
+        user.voicePromptFired = false;
+        user.escalationFired = false;
+      });
+
+      // Send alert only to users whose watchedCities match, or those with no filter
       users.forEach((user, socketId) => {
-        const isRelevant = !user.watchedCities?.length || newAlert.cities.some((city: string) =>
-          user.watchedCities.some((w: string) =>
-            city.includes(w) || w.includes(city)
-          )
-        );
-        if (isRelevant) {
-          user.status = 'pending';
-          user.alertStartTime = Date.now();
-          user.voicePromptFired = false;
-          user.escalationFired = false;
+        if (!user.watchedCities?.length) {
           io.to(socketId).emit('new-alert', newAlert);
-          // Update group members to reflect pending status
-          user.groupIds?.forEach((groupId: string) => {
-            const group = groups.get(groupId);
-            if (group) {
-              const idx = group.members.findIndex((m: any) => m.id === user.id);
-              if (idx !== -1) group.members[idx] = { ...group.members[idx], status: 'pending' };
-              io.to(groupId).emit('group-update', {
-                groupId, name: group.name, type: group.type, members: group.members
-              });
-            }
-          });
+        } else {
+          const isRelevant = newAlert.cities.some((city: string) =>
+            user.watchedCities.some((w: string) =>
+              city.includes(w) || w.includes(city)
+            )
+          );
+          if (isRelevant) io.to(socketId).emit('new-alert', newAlert);
         }
       });
       io.emit('all-alerts', alerts);
@@ -536,20 +628,19 @@ async function startServer() {
         lng: alert.lng || 34.7818,
       };
       alerts.push(newAlert);
+      users.forEach((user) => { user.status = 'pending'; user.alertStartTime = Date.now(); });
+      // Send alert only to users whose watchedCities match, or those with no filter
       users.forEach((user, socketId) => {
-        user.status = 'pending';
-        user.alertStartTime = Date.now();
-        io.to(socketId).emit('new-alert', newAlert);
-        user.groupIds?.forEach((groupId: string) => {
-          const group = groups.get(groupId);
-          if (group) {
-            const idx = group.members.findIndex((m: any) => m.id === user.id);
-            if (idx !== -1) group.members[idx] = { ...group.members[idx], status: 'pending' };
-            io.to(groupId).emit('group-update', {
-              groupId, name: group.name, type: group.type, members: group.members
-            });
-          }
-        });
+        if (!user.watchedCities?.length) {
+          io.to(socketId).emit('new-alert', newAlert);
+        } else {
+          const isRelevant = newAlert.cities.some((city: string) =>
+            user.watchedCities.some((w: string) =>
+              city.includes(w) || w.includes(city)
+            )
+          );
+          if (isRelevant) io.to(socketId).emit('new-alert', newAlert);
+        }
       });
       io.emit('all-alerts', alerts);
     });
