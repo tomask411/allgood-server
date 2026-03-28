@@ -213,6 +213,18 @@ export default function App() {
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
+      const storedRoles = JSON.parse(localStorage.getItem('allgood_group_roles') || '{}');
+      const storedName = localStorage.getItem('allgood_name') || 'User';
+      const storedCities = JSON.parse(localStorage.getItem('allgood_watched_cities') || '[]');
+      if (Object.keys(storedRoles).length > 0) {
+        newSocket.emit('join-group', {
+          userId: MY_USER_ID,
+          userName: storedName,
+          groupIds: Object.keys(storedRoles),
+          groupRoles: storedRoles,
+          watchedCities: storedCities
+        });
+      }
       newSocket.emit('get-alerts');
       fetch('/api/alerts/active')
         .then(res => res.json())
