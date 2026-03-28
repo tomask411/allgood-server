@@ -320,24 +320,30 @@ async function startServer() {
       alerts.push(newAlert);
       if (alerts.length > 100) alerts.shift();
 
-      users.forEach((user) => {
-        user.status = 'pending';
-        user.alertStartTime = Date.now();
-        user.voicePromptFired = false;
-        user.escalationFired = false;
-      });
-
-      // Send alert only to users whose watchedCities match, or those with no filter
+      // Send alert only to relevant users + update their status
       users.forEach((user, socketId) => {
-        if (!user.watchedCities?.length) {
+        const isRelevant = !user.watchedCities?.length || newAlert.cities.some((city: string) =>
+          user.watchedCities.some((w: string) =>
+            city.includes(w) || w.includes(city)
+          )
+        );
+        if (isRelevant) {
+          user.status = 'pending';
+          user.alertStartTime = Date.now();
+          user.voicePromptFired = false;
+          user.escalationFired = false;
           io.to(socketId).emit('new-alert', newAlert);
-        } else {
-          const isRelevant = newAlert.cities.some((city: string) =>
-            user.watchedCities.some((w: string) =>
-              city.includes(w) || w.includes(city)
-            )
-          );
-          if (isRelevant) io.to(socketId).emit('new-alert', newAlert);
+          // Update group members to reflect pending status
+          user.groupIds?.forEach((groupId: string) => {
+            const group = groups.get(groupId);
+            if (group) {
+              const idx = group.members.findIndex((m: any) => m.id === user.id);
+              if (idx !== -1) group.members[idx] = { ...group.members[idx], status: 'pending' };
+              io.to(groupId).emit('group-update', {
+                groupId, name: group.name, type: group.type, members: group.members
+              });
+            }
+          });
         }
       });
       io.emit('all-alerts', alerts);
@@ -530,19 +536,20 @@ async function startServer() {
         lng: alert.lng || 34.7818,
       };
       alerts.push(newAlert);
-      users.forEach((user) => { user.status = 'pending'; user.alertStartTime = Date.now(); });
-      // Send alert only to users whose watchedCities match, or those with no filter
       users.forEach((user, socketId) => {
-        if (!user.watchedCities?.length) {
-          io.to(socketId).emit('new-alert', newAlert);
-        } else {
-          const isRelevant = newAlert.cities.some((city: string) =>
-            user.watchedCities.some((w: string) =>
-              city.includes(w) || w.includes(city)
-            )
-          );
-          if (isRelevant) io.to(socketId).emit('new-alert', newAlert);
-        }
+        user.status = 'pending';
+        user.alertStartTime = Date.now();
+        io.to(socketId).emit('new-alert', newAlert);
+        user.groupIds?.forEach((groupId: string) => {
+          const group = groups.get(groupId);
+          if (group) {
+            const idx = group.members.findIndex((m: any) => m.id === user.id);
+            if (idx !== -1) group.members[idx] = { ...group.members[idx], status: 'pending' };
+            io.to(groupId).emit('group-update', {
+              groupId, name: group.name, type: group.type, members: group.members
+            });
+          }
+        });
       });
       io.emit('all-alerts', alerts);
     });
