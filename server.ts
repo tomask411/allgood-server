@@ -51,7 +51,7 @@ function loadGroups(): Map<string, any> {
     const group = map.get(m.group_id);
     if (group) {
       group.members.push({
-        id: m.user_id, name: m.name, status: 'unknown', socketId: null,
+        id: m.user_id, name: m.name, status: 'safe', socketId: null,
         groupIds: [m.group_id], groupRoles: { [m.group_id]: m.role },
         lastUpdate: m.last_seen * 1000
       });
@@ -507,19 +507,21 @@ async function startServer() {
       if (user.status === 'pending' && user.alertStartTime) {
         const elapsed = (now - user.alertStartTime) / 1000;
 
-        if (elapsed >= 180 && elapsed < 190 && !user.voicePromptFired) {
+        if (elapsed >= 30 && elapsed < 40 && !user.voicePromptFired) {
           user.voicePromptFired = true;
           io.to(socketId).emit('urgent-retry', {
-            message: "We haven't heard from you. Please confirm your status."
+            message: "לא שמענו ממך. אנא אשר/י את הסטטוס שלך."
           });
         }
 
-        if (elapsed >= 240 && elapsed < 250 && !user.escalationFired) {
+        if (elapsed >= 60 && elapsed < 70 && !user.escalationFired) {
           user.escalationFired = true;
-          user.status = 'unknown';
+          user.status = 'danger';
           user.groupIds.forEach((groupId: string) => {
             const group = groups.get(groupId);
             if (group) {
+              const midx = group.members.findIndex((m: any) => m.id === user.id);
+              if (midx !== -1) group.members[midx] = { ...group.members[midx], status: 'danger' };
               const userRole = user.groupRoles?.[groupId] || 'member';
               if (userRole === 'member') {
                 const leader = group.members.find((m: any) => m.groupRoles?.[groupId] === 'leader');
@@ -572,11 +574,18 @@ async function startServer() {
     });
 
     socket.on('join-group', ({ userId, userName, userPhone, userEmail, groupIds, groupRoles, watchedCities }) => {
+      // Check if there's an active alert
+      const lastAlert = alerts[alerts.length - 1];
+      const hasActiveAlert = lastAlert && (Date.now() - lastAlert.timestamp) < 600000;
+      const initialStatus = hasActiveAlert ? 'pending' : 'safe';
+
       const user = {
         id: userId, name: userName, phone: userPhone, email: userEmail,
         groupIds, groupRoles: groupRoles || {},
         watchedCities: watchedCities || [],
-        status: 'safe', socketId: socket.id, lastUpdate: Date.now()
+        status: initialStatus, socketId: socket.id, lastUpdate: Date.now(),
+        alertStartTime: hasActiveAlert ? Date.now() : undefined,
+        voicePromptFired: false, escalationFired: false
       };
       users.set(socket.id, user);
 
@@ -588,7 +597,7 @@ async function startServer() {
           if (row) {
             const memberRows = db.prepare('SELECT * FROM members WHERE group_id = ?').all(row.id) as any[];
             const savedMembers = memberRows.map((m: any) => ({
-              id: m.user_id, name: m.name, status: 'unknown', socketId: null,
+              id: m.user_id, name: m.name, status: 'safe', socketId: null,
               groupIds: [row.id], groupRoles: { [row.id]: m.role }, lastUpdate: m.last_seen * 1000
             }));
             groups.set(groupId, { id: row.id, name: row.name, type: row.type, members: savedMembers });
@@ -710,13 +719,18 @@ async function startServer() {
       console.log('User disconnected:', socket.id);
       const user = users.get(socket.id);
       if (user) {
+        const lastAlert = alerts[alerts.length - 1];
+        const hasActiveAlert = lastAlert && (Date.now() - lastAlert.timestamp) < 600000;
+
         user.groupIds?.forEach((groupId: string) => {
           const group = groups.get(groupId);
           if (group) {
-            // Mark as offline instead of removing — keeps member visible after refresh
             const idx = group.members.findIndex((m: any) => m.id === user.id);
             if (idx !== -1) {
-              group.members[idx] = { ...group.members[idx], status: 'unknown', socketId: null };
+              const lastStatus = group.members[idx].status;
+              // Keep last known status — only override to pending if alert is active and was safe
+              const newStatus = hasActiveAlert && lastStatus === 'safe' ? 'pending' : lastStatus;
+              group.members[idx] = { ...group.members[idx], status: newStatus, socketId: null };
             }
             io.to(groupId).emit('group-update', {
               groupId, name: group.name, type: group.type, members: group.members
