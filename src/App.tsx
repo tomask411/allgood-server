@@ -947,7 +947,7 @@ export default function App() {
                       darkMode ? "border-white/10 text-white/40 hover:text-white/70 hover:border-white/30" : "border-black/5 text-black/30 hover:text-black/60 hover:border-black/20"
                     )}
                   >
-                    🔄 איפוס סטטוס
+                    ✅ All-Good
                   </button>
                 )}
               </motion.div>
