@@ -114,6 +114,7 @@ export default function App() {
   });
   const [myCity, setMyCity] = useState<string>('');
   const watchedCitiesRef = useRef<string[]>(watchedCities);
+  const myCityRef = useRef<string>('');
   const [showLocationSettings, setShowLocationSettings] = useState(false);
   const [manualCityInput, setManualCityInput] = useState('');
   const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem('allgood_dark') === 'true');
@@ -238,6 +239,10 @@ export default function App() {
   }, [watchedCities]);
 
   useEffect(() => {
+    myCityRef.current = myCity;
+  }, [myCity]);
+
+  useEffect(() => {
     const newSocket = io();
     setSocket(newSocket);
 
@@ -304,11 +309,18 @@ export default function App() {
 
     newSocket.on('new-alert', async (alert: Alert) => {
       const currentCities = watchedCitiesRef.current;
-      if (currentCities.length > 0 && alert.cities) {
-        const isRelevant = alert.cities.some(city => 
-          currentCities.some(w => city.includes(w) || w.includes(city))
+      const currentMyCity = myCityRef.current;
+      // Build full list of relevant cities (watched + GPS)
+      const allRelevantCities = [...new Set([...currentCities, ...(currentMyCity ? [currentMyCity] : [])])];
+      
+      if (allRelevantCities.length > 0 && alert.cities) {
+        const isRelevant = alert.cities.some(city =>
+          allRelevantCities.some(w => city.includes(w) || w.includes(city))
         );
         if (!isRelevant) return;
+      } else if (allRelevantCities.length === 0) {
+        // No location set at all — don't show any alerts
+        return;
       }
       setCurrentAlert(alert);
       setMyStatus('pending');
