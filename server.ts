@@ -441,12 +441,8 @@ async function startServer() {
       alerts.push(newAlert);
       if (alerts.length > 100) alerts.shift();
 
-      users.forEach((user) => {
-        user.status = 'pending';
-        user.alertStartTime = Date.now();
-        user.voicePromptFired = false;
-        user.escalationFired = false;
-      });
+      // ✅ FIX: Do NOT set all users to pending here.
+      // Status is updated only for relevant users inside the per-user loop below.
 
       // Send push notifications to offline users
       if (vapidEnabled) {
@@ -693,7 +689,8 @@ async function startServer() {
         lng: alert.lng || 34.7818,
       };
       alerts.push(newAlert);
-      users.forEach((user) => { user.status = 'pending'; user.alertStartTime = Date.now(); });
+      // ✅ FIX: Removed `users.forEach(user => user.status = 'pending')` here.
+      // Only relevant users (matched by watchedCities) should become pending.
       // Send alert only to users whose watchedCities match, or those with no filter
       users.forEach((user, socketId) => {
         if (!user.watchedCities?.length) {
