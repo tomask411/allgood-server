@@ -190,7 +190,8 @@ export default function App() {
         userId: MY_USER_ID,
         userName: userName || 'User',
         groupIds: Object.keys(groupRoles),
-        groupRoles: groupRoles
+        groupRoles,
+        watchedCities, // ✅ FIX: was missing — server was getting empty watchedCities
       });
     }
   }, [socket, groupRoles, userName, watchedCities]);
@@ -236,6 +237,21 @@ export default function App() {
   useEffect(() => {
     watchedCitiesRef.current = watchedCities;
     localStorage.setItem('allgood_watched_cities', JSON.stringify(watchedCities));
+
+    // ✅ FIX: Sync updated watchedCities to the push subscription on the server
+    // so offline push notifications also respect the new city filter
+    if (watchedCities.length > 0) {
+      navigator.serviceWorker?.ready.then(async (reg) => {
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          fetch('/api/push/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: MY_USER_ID, subscription: sub, watchedCities }),
+          }).catch(() => {});
+        }
+      }).catch(() => {});
+    }
   }, [watchedCities]);
 
   useEffect(() => {
@@ -312,16 +328,21 @@ export default function App() {
       const currentMyCity = myCityRef.current;
       // Build full list of relevant cities (watched + GPS)
       const allRelevantCities = [...new Set([...currentCities, ...(currentMyCity ? [currentMyCity] : [])])];
-      
-      if (allRelevantCities.length > 0 && alert.cities) {
-        const isRelevant = alert.cities.some(city =>
-          allRelevantCities.some(w => city.includes(w) || w.includes(city))
-        );
-        if (!isRelevant) return;
-      } else if (allRelevantCities.length === 0) {
-        // No location set at all — don't show any alerts
-        return;
+
+      // ✅ FIX: Guard against alert.cities being undefined/empty
+      const alertCities: string[] = Array.isArray(alert.cities) ? alert.cities : [];
+
+      if (allRelevantCities.length > 0) {
+        if (alertCities.length === 0) {
+          // Alert has no city info — show it (can't filter what we don't know)
+        } else {
+          const isRelevant = alertCities.some(city =>
+            allRelevantCities.some(w => city.includes(w) || w.includes(city))
+          );
+          if (!isRelevant) return;
+        }
       }
+      // If allRelevantCities.length === 0: no filter configured → show all alerts
       setCurrentAlert(alert);
       setMyStatus('pending');
       newSocket.emit('update-status', { status: 'pending' });
@@ -486,7 +507,8 @@ export default function App() {
       userId: MY_USER_ID,
       userName: newName,
       groupIds: Object.keys(groupRoles),
-      groupRoles
+      groupRoles,
+      watchedCities, // ✅ FIX: was missing
     });
   };
 
@@ -942,9 +964,12 @@ export default function App() {
                 {myStatus === 'safe' && (
                   <button
                     onClick={handleIAmOkay}
-                    className="w-full mt-4 py-3 rounded-2xl text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200 transition-all active:scale-95"
+                    className={cn(
+                      "w-full mt-4 py-3 rounded-2xl text-xs font-bold border transition-all active:scale-95",
+                      darkMode ? "border-white/10 text-white/40 hover:text-white/70 hover:border-white/30" : "border-black/5 text-black/30 hover:text-black/60 hover:border-black/20"
+                    )}
                   >
-                    ✅ הכל טוב!
+                    ✅ All-Good
                   </button>
                 )}
               </motion.div>
