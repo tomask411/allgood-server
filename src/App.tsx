@@ -942,12 +942,9 @@ export default function App() {
                 {myStatus === 'safe' && (
                   <button
                     onClick={handleIAmOkay}
-                    className={cn(
-                      "w-full mt-4 py-3 rounded-2xl text-xs font-bold border transition-all active:scale-95",
-                      darkMode ? "border-white/10 text-white/40 hover:text-white/70 hover:border-white/30" : "border-black/5 text-black/30 hover:text-black/60 hover:border-black/20"
-                    )}
+                    className="w-full mt-4 py-3 rounded-2xl text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200 transition-all active:scale-95"
                   >
-                    ✅ All-Good
+                    ✅ הכל טוב!
                   </button>
                 )}
               </motion.div>
