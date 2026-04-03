@@ -1394,7 +1394,7 @@ export default function App() {
               </MapContainer>
               
               <div className="absolute bottom-4 left-4 right-4 z-[1000]">
-                <AlertHistory socketAlerts={allAlerts} />
+                <AlertHistory socketAlerts={allAlerts} darkMode={darkMode} />
               </div>
             </section>
           </div>
