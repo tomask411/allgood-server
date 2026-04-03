@@ -962,15 +962,18 @@ export default function App() {
                   </motion.button>
                 )}
                 {myStatus === 'safe' && (
-                  <button
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    whileHover={{ scale: 1.02 }}
                     onClick={handleIAmOkay}
                     className={cn(
-                      "w-full mt-4 py-3 rounded-2xl text-xs font-bold border transition-all active:scale-95",
-                      darkMode ? "border-white/10 text-white/40 hover:text-white/70 hover:border-white/30" : "border-black/5 text-black/30 hover:text-black/60 hover:border-black/20"
+                      "w-full mt-5 py-5 rounded-2xl text-lg font-black tracking-tight transition-all shadow-lg active:scale-95",
+                      "bg-emerald-500 hover:bg-emerald-400",
+                      darkMode ? "text-white shadow-emerald-900/40" : "text-white shadow-emerald-200"
                     )}
                   >
-                    ✅ All-Good
-                  </button>
+                    ✅ ALL GOOD
+                  </motion.button>
                 )}
               </motion.div>
             </section>
