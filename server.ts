@@ -441,15 +441,20 @@ async function startServer() {
       alerts.push(newAlert);
       if (alerts.length > 100) alerts.shift();
 
-      // ✅ FIX: Do NOT set all users to pending here.
-      // Status is updated only for relevant users inside the per-user loop below.
+      users.forEach((user) => {
+        user.status = 'pending';
+        user.alertStartTime = Date.now();
+        user.voicePromptFired = false;
+        user.escalationFired = false;
+      });
 
       // Send push notifications to offline users
       if (vapidEnabled) {
         const allSubs = db.prepare('SELECT * FROM push_subscriptions').all() as any[];
         allSubs.forEach((row: any) => {
           const watchedCities = JSON.parse(row.watched_cities || '[]');
-          const isRelevant = !watchedCities.length || newAlert.cities.some((city: string) =>
+          // Only notify if user has configured cities AND alert matches one of them
+          const isRelevant = watchedCities.length > 0 && newAlert.cities.some((city: string) =>
             watchedCities.some((w: string) => city.includes(w) || w.includes(city))
           );
           if (isRelevant) {
@@ -467,7 +472,8 @@ async function startServer() {
 
       // Send alert only to online users whose watchedCities match
       users.forEach((user, socketId) => {
-        const isRelevant = !user.watchedCities?.length || newAlert.cities.some((city: string) =>
+        // Only alert if user has configured cities AND alert matches one of them
+        const isRelevant = user.watchedCities?.length > 0 && newAlert.cities.some((city: string) =>
           user.watchedCities.some((w: string) =>
             city.includes(w) || w.includes(city)
           )
@@ -689,19 +695,17 @@ async function startServer() {
         lng: alert.lng || 34.7818,
       };
       alerts.push(newAlert);
-      // ✅ FIX: Removed `users.forEach(user => user.status = 'pending')` here.
-      // Only relevant users (matched by watchedCities) should become pending.
-      // Send alert only to users whose watchedCities match, or those with no filter
+      // Send alert only to users whose watchedCities match
       users.forEach((user, socketId) => {
-        if (!user.watchedCities?.length) {
+        const isRelevant = user.watchedCities?.length > 0 && newAlert.cities.some((city: string) =>
+          user.watchedCities.some((w: string) =>
+            city.includes(w) || w.includes(city)
+          )
+        );
+        if (isRelevant) {
+          user.status = 'pending';
+          user.alertStartTime = Date.now();
           io.to(socketId).emit('new-alert', newAlert);
-        } else {
-          const isRelevant = newAlert.cities.some((city: string) =>
-            user.watchedCities.some((w: string) =>
-              city.includes(w) || w.includes(city)
-            )
-          );
-          if (isRelevant) io.to(socketId).emit('new-alert', newAlert);
         }
       });
       io.emit('all-alerts', alerts);
