@@ -11,6 +11,7 @@ interface OrefHistoryItem {
 interface AlertHistoryProps {
   /** in-app alerts from socket (demo + real-time) */
   socketAlerts: { id: string; area: string; timestamp: number; source?: string }[];
+  darkMode?: boolean;
 }
 
 const categoryLabel: Record<number, string> = {
@@ -24,7 +25,7 @@ const categoryLabel: Record<number, string> = {
   101: '✅ All Clear',
 };
 
-export default function AlertHistory({ socketAlerts }: AlertHistoryProps) {
+export default function AlertHistory({ socketAlerts, darkMode = false }: AlertHistoryProps) {
   const [orefHistory, setOrefHistory] = useState<OrefHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
@@ -68,12 +69,12 @@ export default function AlertHistory({ socketAlerts }: AlertHistoryProps) {
   const hasSocketAlerts = socketAlerts.length > 0;
 
   return (
-    <div className="bg-white/90 backdrop-blur-md rounded-2xl border border-black/5 overflow-hidden">
+    <div className={`backdrop-blur-md rounded-2xl border overflow-hidden ${darkMode ? 'bg-stone-800/95 border-white/10' : 'bg-white/90 border-black/5'}`}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-black/5">
+      <div className={`flex items-center justify-between px-4 py-3 border-b ${darkMode ? 'border-white/10' : 'border-black/5'}`}>
         <div className="flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-red-500" />
-          <h3 className="text-xs font-bold uppercase tracking-wider">Alert History</h3>
+          <h3 className={`text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-white' : 'text-black'}`}>Alert History</h3>
           {hasRealHistory && (
             <span className="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded-full font-bold">
               Pikud HaOref Live
@@ -83,13 +84,13 @@ export default function AlertHistory({ socketAlerts }: AlertHistoryProps) {
         <button
           onClick={fetchHistory}
           disabled={loading}
-          className="p-1.5 hover:bg-black/5 rounded-full transition-colors"
+          className={`p-1.5 rounded-full transition-colors ${darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
         >
-          <RefreshCw className={`w-3 h-3 opacity-40 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3 h-3 ${darkMode ? 'text-white/40' : 'opacity-40'} ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      <div className="max-h-52 overflow-y-auto divide-y divide-black/5">
+      <div className={`max-h-52 overflow-y-auto divide-y ${darkMode ? 'divide-white/5' : 'divide-black/5'}`}>
         {/* Real Oref history */}
         {hasRealHistory && orefHistory.map((item, i) => (
           <div key={i} className="flex items-start gap-3 px-4 py-2.5">
@@ -97,13 +98,13 @@ export default function AlertHistory({ socketAlerts }: AlertHistoryProps) {
               {categoryLabel[item.category]?.split(' ')[0] || '⚠️'}
             </span>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-red-700 truncate">{item.data}</p>
-              <p className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
+              <p className="text-xs font-bold text-red-500 truncate">{item.data}</p>
+              <p className={`text-[10px] flex items-center gap-1 mt-0.5 ${darkMode ? 'text-white/30' : 'text-gray-400'}`}>
                 <Clock className="w-2.5 h-2.5" />
                 {formatDate(item.alertDate)}
               </p>
             </div>
-            <span className="text-[9px] text-gray-300 font-mono shrink-0">
+            <span className={`text-[9px] font-mono shrink-0 ${darkMode ? 'text-white/20' : 'text-gray-300'}`}>
               {categoryLabel[item.category]?.split(' ').slice(1).join(' ') || 'Alert'}
             </span>
           </div>
@@ -118,13 +119,13 @@ export default function AlertHistory({ socketAlerts }: AlertHistoryProps) {
                 : <span className="w-2 h-2 rounded-full bg-orange-400" />
               }
               <div>
-                <p className="text-xs font-bold">{alert.area}</p>
+                <p className={`text-xs font-bold ${darkMode ? 'text-white' : 'text-black'}`}>{alert.area}</p>
                 {alert.source === 'demo' && (
-                  <p className="text-[9px] text-gray-300">Simulation</p>
+                  <p className={`text-[9px] ${darkMode ? 'text-white/30' : 'text-gray-300'}`}>Simulation</p>
                 )}
               </div>
             </div>
-            <span className="text-[10px] opacity-40 font-mono">
+            <span className={`text-[10px] font-mono ${darkMode ? 'text-white/30' : 'opacity-40'}`}>
               {new Date(alert.timestamp).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
@@ -132,15 +133,15 @@ export default function AlertHistory({ socketAlerts }: AlertHistoryProps) {
 
         {/* Empty state */}
         {!hasRealHistory && !hasSocketAlerts && (
-          <p className="text-[11px] opacity-30 italic text-center py-4">
+          <p className={`text-[11px] italic text-center py-4 ${darkMode ? 'text-white/30' : 'opacity-30'}`}>
             {loading ? 'Loading...' : 'No recent alerts — Stay safe 🕊️'}
           </p>
         )}
       </div>
 
       {lastFetched && (
-        <div className="px-4 py-2 border-t border-black/5">
-          <p className="text-[9px] text-gray-300 text-center">
+        <div className={`px-4 py-2 border-t ${darkMode ? 'border-white/10' : 'border-black/5'}`}>
+          <p className={`text-[9px] text-center ${darkMode ? 'text-white/20' : 'text-gray-300'}`}>
             Updated {lastFetched.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
