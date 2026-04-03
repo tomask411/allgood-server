@@ -1307,8 +1307,7 @@ export default function App() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search location in Israel..."
-                className={cn("w-full border rounded-2xl px-12 py-4 outline-none focus:border-emerald-500 transition-all shadow-sm text-black", darkMode ? "bg-stone-700 border-white/10" : "bg-white border-black/5")}
-              />
+                className={cn("w-full border rounded-2xl px-12 py-4 outline-none focus:border-emerald-500 transition-all shadow-sm", darkMode ? "bg-stone-700 border-white/10 text-white placeholder:text-white/30" : "bg-white border-black/5 text-black placeholder:text-black/40")}              />
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-30" />
               {isSearching && (
                 <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -1317,7 +1316,7 @@ export default function App() {
               )}
             </form>
 
-            <section className="h-[60vh] bg-white rounded-3xl border border-black/5 overflow-hidden relative z-0">
+            <section className={cn("h-[60vh] rounded-3xl border overflow-hidden relative z-0", darkMode ? "bg-stone-800 border-white/10" : "bg-white border-black/5")}>
               <MapContainer 
                 center={mapCenter} 
                 zoom={mapZoom} 
