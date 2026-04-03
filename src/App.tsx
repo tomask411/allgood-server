@@ -332,15 +332,14 @@ export default function App() {
       // ✅ FIX: Guard against alert.cities being undefined/empty
       const alertCities: string[] = Array.isArray(alert.cities) ? alert.cities : [];
 
-      if (allRelevantCities.length > 0) {
-        if (alertCities.length === 0) {
-          // Alert has no city info — show it (can't filter what we don't know)
-        } else {
-          const isRelevant = alertCities.some(city =>
-            allRelevantCities.some(w => city.includes(w) || w.includes(city))
-          );
-          if (!isRelevant) return;
-        }
+      // If no cities configured → block all alerts
+      if (allRelevantCities.length === 0) return;
+
+      if (alertCities.length > 0) {
+        const isRelevant = alertCities.some(city =>
+          allRelevantCities.some(w => city.includes(w) || w.includes(city))
+        );
+        if (!isRelevant) return;
       }
       // If allRelevantCities.length === 0: no filter configured → show all alerts
       setCurrentAlert(alert);
