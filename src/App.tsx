@@ -120,6 +120,7 @@ export default function App() {
   const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem('allgood_dark') === 'true');
   const [pushEnabled, setPushEnabled] = useState<boolean>(false);
   const [pushLoading, setPushLoading] = useState<boolean>(false);
+  const [showPushPrompt, setShowPushPrompt] = useState<boolean>(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState<boolean>(false);
 
@@ -389,40 +390,27 @@ export default function App() {
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
-    const setupPush = async () => {
+    // If already subscribed — just register SW silently, no prompt needed
+    const checkExisting = async () => {
       try {
         const reg = await navigator.serviceWorker.register('/sw.js');
-        const keyRes = await fetch('/api/push/vapid-key');
-        const { publicKey } = await keyRes.json();
-        if (!publicKey) return;
-
         const existing = await reg.pushManager.getSubscription();
-        if (existing) return; // already subscribed
-
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') return;
-
-        const sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: publicKey
-        });
-
-        await fetch('/api/push/subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: MY_USER_ID,
-            subscription: sub,
-            watchedCities: JSON.parse(localStorage.getItem('allgood_watched_cities') || '[]')
-          })
-        });
-        console.log('✅ Push notifications enabled');
+        if (existing) {
+          setPushEnabled(true);
+          return;
+        }
+        // If never asked before — show our custom prompt after 20s
+        const alreadyAsked = localStorage.getItem('allgood_push_asked');
+        if (!alreadyAsked) {
+          const timer = setTimeout(() => setShowPushPrompt(true), 20000);
+          return () => clearTimeout(timer);
+        }
       } catch (err) {
         console.error('Push setup error:', err);
       }
     };
 
-    setupPush();
+    checkExisting();
   }, []);
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -662,6 +650,72 @@ export default function App() {
                   Get Started →
                 </button>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Push Notification Prompt */}
+      <AnimatePresence>
+        {showPushPrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end justify-center p-6 pb-10"
+          >
+            <motion.div
+              initial={{ y: 80, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 80, opacity: 0 }}
+              transition={{ type: 'spring', damping: 20 }}
+              className={cn(
+                "w-full max-w-sm rounded-[32px] p-8 shadow-2xl",
+                darkMode ? "bg-stone-800 text-white" : "bg-white text-black"
+              )}
+            >
+              {/* Icon */}
+              <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-emerald-200">
+                <Bell className="w-8 h-8 text-white" />
+              </div>
+
+              {/* Text */}
+              <div className="text-center mb-6">
+                <h3 className="text-2xl font-black tracking-tight mb-2">הישאר/י מחוברת</h3>
+                <p className={cn("text-sm leading-relaxed", darkMode ? "text-white/60" : "text-black/50")}>
+                  רוצה לקבל התראה ישירות לטלפון כשיש אזעקה — גם כשהאפליקציה סגורה?
+                </p>
+              </div>
+
+              {/* Buttons */}
+              <div className="space-y-3">
+                <button
+                  onClick={async () => {
+                    localStorage.setItem('allgood_push_asked', 'true');
+                    setShowPushPrompt(false);
+                    await enablePush();
+                  }}
+                  disabled={pushLoading}
+                  className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-black text-base py-4 rounded-2xl shadow-lg shadow-emerald-200/50 transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  {pushLoading
+                    ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    : <>🔔 כן, הפעל התראות</>
+                  }
+                </button>
+                <button
+                  onClick={() => {
+                    localStorage.setItem('allgood_push_asked', 'true');
+                    setShowPushPrompt(false);
+                  }}
+                  className={cn(
+                    "w-full font-bold text-sm py-3 rounded-2xl transition-all active:scale-95",
+                    darkMode ? "text-white/40 hover:text-white/70" : "text-black/30 hover:text-black/60"
+                  )}
+                >
+                  לא תודה
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -1394,7 +1448,7 @@ export default function App() {
               </MapContainer>
               
               <div className="absolute bottom-4 left-4 right-4 z-[1000]">
-                <AlertHistory socketAlerts={allAlerts} darkMode={darkMode} />
+                <AlertHistory socketAlerts={allAlerts} />
               </div>
             </section>
           </div>
