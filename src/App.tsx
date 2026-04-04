@@ -282,10 +282,22 @@ export default function App() {
         .then(data => {
           if (data && data.id) {
             const isRecent = (Date.now() - data.timestamp) < 600000;
-            if (isRecent) {
-              setCurrentAlert(data);
-              setMyStatus('pending');
+            if (!isRecent) return;
+
+            // ✅ FIX: filter by watchedCities — same logic as new-alert handler
+            const storedCities = JSON.parse(localStorage.getItem('allgood_watched_cities') || '[]');
+            if (storedCities.length === 0) return;
+
+            const alertCities: string[] = Array.isArray(data.cities) ? data.cities : [];
+            if (alertCities.length > 0) {
+              const isRelevant = alertCities.some((city: string) =>
+                storedCities.some((w: string) => city.includes(w) || w.includes(city))
+              );
+              if (!isRelevant) return;
             }
+
+            setCurrentAlert(data);
+            setMyStatus('pending');
           }
         })
         .catch(err => console.error('Alert check error:', err));
