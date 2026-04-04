@@ -729,8 +729,12 @@ async function startServer() {
             const idx = group.members.findIndex((m: any) => m.id === user.id);
             if (idx !== -1) {
               const lastStatus = group.members[idx].status;
-              // Keep last known status — only override to pending if alert is active and was safe
-              const newStatus = hasActiveAlert && lastStatus === 'safe' ? 'pending' : lastStatus;
+              // If no active alert → always safe when offline
+              // If active alert and was safe → move to pending (we don't know their status)
+              // If active alert and was already pending/danger → keep that status
+              const newStatus = !hasActiveAlert
+                ? 'safe'
+                : lastStatus === 'safe' ? 'pending' : lastStatus;
               group.members[idx] = { ...group.members[idx], status: newStatus, socketId: null };
             }
             io.to(groupId).emit('group-update', {
